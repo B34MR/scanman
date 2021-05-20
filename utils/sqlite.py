@@ -14,10 +14,11 @@ def create_table():
 
 	try:
 		with conn:
-			c.execute("""CREATE TABLE Services(
-				Description text,
+			c.execute("""CREATE TABLE NetworkServices(
+				IPAddress text,
 				Port text,
-				IP Address text
+				Protocol text,
+				Description text
 				)""")
 	except sqlite3.OperationalError:
 		pass
@@ -28,14 +29,14 @@ def drop_table():
 	
 	try:
 		with conn:
-			c.execute(f"DROP TABLE Services")
+			c.execute(f"DROP TABLE NetworkServices")
 	except sqlite3.OperationalError as e:
 		pass
 
 
-def insert_result(description, port, ipaddress):
-	''' Insert result [(IP, Port, Protocol)] '''
+def insert_result(ipaddress, port, protocol, description,):
+	''' Insert result [(IP Address, Port, Protocol, Description)] '''
 	
 	with conn:
-		c.execute("INSERT INTO Services VALUES (:description, :port, :ipaddress)",
-		 {'description': description, 'port': port, 'ipaddress': ipaddress})
+		c.execute("INSERT INTO NetworkServices VALUES (:ipaddress, :port, :protocol, :description)",
+		 {'ipaddress': ipaddress, 'port': port, 'protocol':protocol, 'description': description})

@@ -11,56 +11,79 @@ config = ConfigParser(delimiters='=')
 config.optionxform = str
 config.read(configfile)
 
-[print(k) for k in config['masscanconfig'].items()]
-[print(k) for k in config['ports'].items()]
+MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
+PORTSCANS = {k: v for k, v in config['portscan'].items()}
 
 
 class Masscanner():
 	''' '''
 
-	def __init__(self, rate, ports, targets):
+	def __init__(self, interface, rate):
+		self.interface = interface
 		self.rate = rate
-		self.ports = ports
-		self.targets = targets
+		self.targets = None
 
-	def read_ports(self, ports):
-		''' '''
-		pass
-	
 
 	def read_targets(self, targets):
 		''' '''
 		pass
 
-	def scan(self):
-		''' '''
-		cmd = f'masscan -p {self.ports} {self.targets} --rate {self.rate}'
-		cmd = cmd.split(' ')
-		print(cmd)
 
-		result = subprocess.run(cmd, 
+	def parse_ports(self, ports):
+		''' '''
+		
+		# Convert lst to strgs.
+		portsstr = ''.join(ports)
+		# Remove white-space between ports and convert lst to str.
+		parsed_ports = str(portsstr.replace(' ','') )
+
+		return parsed_ports
+
+
+	def parse_stdout(self, stdout):
+		''' '''
+
+		stdout = stdout.split()
+		# Clean '' and '\n' from stdout.
+		stdoutlst = [i for i in stdout if i != '' and i != '\n']
+		# Parse out port(s) and IP address(es) from stdoutlst.
+		parsed_stdout = {stdoutlst[i+2]: stdoutlst[i].split('/') for i in range(3, len(stdoutlst), 6)}
+
+		return parsed_stdout
+
+
+	def scan(self, description, ports):
+		''' '''
+
+		parsed_ports = self.parse_ports(ports)
+
+		cmd = f'masscan --interface {self.interface} --rate {self.rate} -p {parsed_ports} {self.targets}'
+		print(cmd)
+		cmd = cmd.split(' ')
+
+		proc = subprocess.run(cmd, 
 			shell=False,
 			check=False,
 			capture_output=True,
 			text=True)
-		# print(result.stdout)
-
-		scanresults = result.stdout.split(' ')
-
-		print(scanresults)
-		# myresults = [r for r in results]
-
-		# print(myresults[3], myresults[5])
-		db.insert_result('smb', scanresults[3], scanresults[5])
-
-		# print(result.stderr)
+		# Parse stdout, return dict.
+		parsed_stdout = self.parse_stdout(proc.stdout)
+		# Append description to dict v:lst
+		[parsed_stdout[k].append(description) for k in parsed_stdout]
+			
+		return parsed_stdout
 
 
-
+# Create table
 db.create_table()
-masscanner = Masscanner('100', '445', '192.168.3.1/24')
-masscanner.scan()
-# masscanner = Masscanner('100', '80', '192.168.3.1/24')
-# masscanner.scan()
-# masscanner = Masscanner('100', '443', '192.168.3.1/24')
-# masscanner.scan()
+# Init Masscanner.
+masscanner = Masscanner(MSCONFIG['interface'], MSCONFIG['rate'])
+# Set targets.
+masscanner.targets = '192.168.3.1/24'
+# Launch scan(s).
+for k, v in PORTSCANS.items():
+	results = masscanner.scan(k, v)
+	for k, v in results.items():
+		# Insert results into database k:ipaddress, v[0]:port, v[1]:protocol, v[2]:description.
+		db.insert_result(k, v[0], v[1], v[2])
+		print(k, v[0], v[1], v[2])
