@@ -40,7 +40,7 @@ def parse_args():
   
   # Optional argument group.
   optional_group = parser.add_argument_group('optional_args')
-  optional_group.add_argument('-iL', '--inputlist', required=False, action='store_true', default='', help='Input from list of hosts/networks')
+  optional_group.add_argument('-iL', '--inputlist', type=str, required=False, default='', help='Input from list of hosts/networks')
   optional_group.add_argument('-d', '--drop', required=False, action='store_true', default='', help='Launch with clean database.')
 
   # Mutually Exclusive group.
