@@ -1,18 +1,13 @@
 #!/usr/bin/env python3
 
+from utils import richard as r
 from utils import sqlite as db
+from utils import arguments
 from configparser import ConfigParser
-# import os
 import subprocess
+# import os
 # import sys
-
-configfile = 'utils/config.ini'
-config = ConfigParser(delimiters='=')
-config.optionxform = str
-config.read(configfile)
-
-MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
-PORTSCANS = {k: v for k, v in config['portscan'].items()}
+import logging
 
 
 class Masscanner():
@@ -26,7 +21,10 @@ class Masscanner():
 
 	def read_targets(self, targets):
 		''' '''
-		pass
+
+		with open(filepath, 'r+') as f1:
+			lines = f1.readlines
+			print(lines)
 
 
 	def parse_ports(self, ports):
@@ -74,16 +72,41 @@ class Masscanner():
 		return parsed_stdout
 
 
-# Create table
-db.create_table()
-# Init Masscanner.
-masscanner = Masscanner(MSCONFIG['interface'], MSCONFIG['rate'])
-# Set targets.
-masscanner.targets = '192.168.3.1/24'
-# Launch scan(s).
-for k, v in PORTSCANS.items():
-	results = masscanner.scan(k, v)
-	for k, v in results.items():
-		# Insert results into database k:ipaddress, v[0]:port, v[1]:protocol, v[2]:description.
-		db.insert_result(k, v[0], v[1], v[2])
-		print(k, v[0], v[1], v[2])
+def main():
+	''' Main Func '''
+
+	# Args
+	args = arguments.parse_args()
+
+	# Args - Configfile path
+	configfile = args.configfile
+
+	if args.drop:
+		db.drop_table()
+
+
+	# Import configfile.
+	config = ConfigParser(delimiters='=')
+	config.optionxform = str
+	config.read(configfile)
+	# Configfile values.
+	MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
+	PORTSCANS = {k: v for k, v in config['portscan'].items()}
+
+	# Databse init.
+	db.create_table()
+	# Masscanner class init.
+	masscanner = Masscanner(MSCONFIG['interface'], MSCONFIG['rate'])
+	# Set targets.
+	masscanner.targets = '192.168.3.1/24'
+	# Launch scan(s).
+	for k, v in PORTSCANS.items():
+		results = masscanner.scan(k, v)
+		for k, v in results.items():
+			# Insert results into database k:ipaddress, v[0]:port, v[1]:protocol, v[2]:description.
+			db.insert_result(k, v[0], v[1], v[2])
+			print(k, v[0], v[1], v[2])
+
+
+if __name__ == '__main__':
+	main()
