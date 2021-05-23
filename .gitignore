@@ -1,9 +1,6 @@
 # App Specific
 database.db
-scope.txt
-ips.txt
-targets.txt
-
+outfiles/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
