@@ -50,20 +50,42 @@ def main():
 				print(k, v[0], v[1], v[2])
 
 	elif os.path.basename(configfile) == 'nmap.ini':
+
+		# Args - droptable
+		if args.drop:
+			db.drop_table()
+
+		# ConfigParser - read onfigfile.
+		config = ConfigParser(delimiters='=')
+		config.optionxform = str
+		config.read(configfile)
+
+		# ConfigParser - declare dict values.
+		NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
+		NSESCANS = {k: v for k, v in config['myscans'].items()}
+
+		# Nmapper - instance init.
 		nmapper = nm.Nmapper()
-		nmapper.run_scan('smb2-security-mode', '445', './outfiles/smb2-security-mode.xml')
 		
 		# XmlParser - instance init.
-		xmlparser = nm.XmlParser('./outfiles/smb2-security-mode.xml')
-		# XmlParser - obtain hosts:lst.
-		hosts = xmlparser.get_hosts()
-		# XmlParser - obtain ipaddresses and results from hosts:lst.
-		for host in hosts:
-			ipaddress = xmlparser.get_addr(host)
-			result = xmlparser.get_hostscript(host)
-			# Find hosts with results.
-			if result is not None:
-				print(ipaddress, result)
+		xmlparser = nm.XmlParser()
+		
+		# Nmapper - launch scan(s).
+		for k, v in NSESCANS.items():
+			xml_filepath = f'./outfiles/{k}.xml'
+			nmapper.run_scan(k, v, xml_filepath)
+		
+			# XmlParser - read xml file and parse.
+			xmlparser.read_xml(xml_filepath)
+			# XmlParser - obtain hosts:lst from xml file.
+			hosts = xmlparser.get_hosts()
+			# XmlParser - obtain ipaddress(es) and nse-script scan result(s) from hosts:lst.
+			for host in hosts:
+				ipaddress = xmlparser.get_addr(host)
+				result = xmlparser.get_hostscript(host)
+				# Exclude hossts with no nse script-scan result(s).
+				if result is not None:
+					print(ipaddress, result)
 
 
 if __name__ == '__main__':

@@ -39,3 +39,15 @@ def insert_result(ipaddress, port, protocol, description,):
 	with conn:
 		c.execute("INSERT INTO NetworkServices VALUES (:ipaddress, :port, :protocol, :description)",
 		 {'ipaddress': ipaddress, 'port': port, 'protocol':protocol, 'description': description})
+
+
+def get_ipaddress_by_port(port):
+	''' '''
+
+	c.execute("SELECT * FROM NetworkServices WHERE port=:port", {'port': port})
+	
+	return c.fetchall()
+
+
+ipaddress = get_ipaddress_by_port('445')
+print(ipaddress)

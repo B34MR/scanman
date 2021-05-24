@@ -8,11 +8,22 @@ import logging
 class XmlParser():
 	''' Nmapper XML Parser class. '''
 	
-	def __init__(self, xmlfile):
-		self.xmlfile = xmlfile
-		self.xmltree = ET.parse(self.xmlfile)
+	
+	def __init__(self):
+		self.xmlroot = None
+
+
+	def read_xml(self, filepath):
+		'''
+		Parses/reads an xml file and returns the xmlroot. 
+		arg(s):xmlfile:str
+		'''
+	
+		xmltree = ET.parse(filepath)
 		#<nmaprun></nmaprun>
-		self.xmlroot = self.xmltree.getroot() 
+		self.xmlroot = xmltree.getroot()
+
+		return self.xmlroot
 
 	
 	def get_hosts(self):
