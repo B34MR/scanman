@@ -42,12 +42,8 @@ def insert_result(ipaddress, port, protocol, description,):
 
 
 def get_ipaddress_by_port(port):
-	''' '''
+	''' Get IP Address by filtering the port value.'''
 
 	c.execute("SELECT * FROM NetworkServices WHERE port=:port", {'port': port})
 	
 	return c.fetchall()
-
-
-ipaddress = get_ipaddress_by_port('445')
-print(ipaddress)

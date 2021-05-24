@@ -72,8 +72,14 @@ def main():
 		
 		# Nmapper - launch scan(s).
 		for k, v in NSESCANS.items():
+			
+			# Sqlite - Fetch targets by nse-script scan port.
+			results = [i[0] for i in db.get_ipaddress_by_port(v)]
+			targets = ' '.join(results)
+
+			# Nmapper - launch scan(s).
 			xml_filepath = f'./outfiles/{k}.xml'
-			nmapper.run_scan(k, v, xml_filepath)
+			nmapper.run_scan(k, v, targets, xml_filepath)
 		
 			# XmlParser - read xml file and parse.
 			xmlparser.read_xml(xml_filepath)

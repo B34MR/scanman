@@ -51,7 +51,7 @@ class Masscanner():
 		# Scrub ports from any potential user input error.
 		parsed_ports = self.parse_ports(ports)
 		# Masscan command.
-		cmd = f'masscan --interface {self.interface} --rate {self.rate} -p {parsed_ports} -iL {self.inputlist}'
+		cmd = f'masscan --interface {self.interface} --rate {self.rate} -iL {self.inputlist} -p {parsed_ports}'
 		# DEV - print.
 		print(f'\nCommand: {cmd}')
 		cmd = cmd.split(' ')

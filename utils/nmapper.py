@@ -79,8 +79,8 @@ class XmlParser():
 class Nmapper():
 	''' Nmap base class wrapper '''
 
-	def __init__(self):
-		pass
+	# def __init__(self, inputlist):
+	# 	self.inputlist = inputlist
 
 
 	def parse_ports(self, ports):
@@ -88,26 +88,28 @@ class Nmapper():
 		Scrub ports convert lst to str(if needed), remove any whitespaces
 		arg(s)ports:lst/str 
 		'''
+		p = ','.join(ports.split(',')).replace(' ','')
+		parsed_ports = p.replace(',',', ')
 		
-		# Convert lst to str.
-		portsstr = ''.join(ports)
-		# Remove white-space between ports and convert lst to str.
-		parsed_ports = str(portsstr.replace(' ','') )
+		# # Convert lst to str.
+		# portsstr = ''.join(ports)
+		# # Remove white-space between ports and convert lst to str.
+		# parsed_ports = str(portsstr.replace(' ','') )
 
 		return parsed_ports
 
 
-	def run_scan(self, nse_script, ports, xmlfile):
+	def run_scan(self, nse_script, ports, targets, xmlfile):
 		''' 
 		Scanner
 		arg(s)description:str, ports:lst/str
 
 		'''
 		# Scrub ports from any potential user input error.
-		# parsed_ports = self.parse_ports(ports)
+		parsed_ports = self.parse_ports(ports)
 
 		# Nmap command.
-		cmd = f"nmap -Pn --script {nse_script} -p {ports} 192.168.3.1/24 -oX {xmlfile}"
+		cmd = f"nmap --script {nse_script} -p {parsed_ports} -Pn {targets} -oX {xmlfile}"
 		# DEV - print.
 		print(f'\nCommand: {cmd}')
 		cmd = cmd.split(' ')
