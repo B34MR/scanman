@@ -11,14 +11,6 @@ import os
 import logging
 
 
-# def write_file(filename):
-# 	''' '''
-# 	filepath = os.path.join(f'./outfiles/masscanner/', filename)
-
-# 	with open(filepath, 'w+') as f1:
-# 		f1.write(f'{}\n')
-
-
 def main():
 	''' Main Func '''
 
@@ -27,6 +19,11 @@ def main():
 
 	# Args - configfile
 	configfile = args.configfile
+
+	# ConfigParser - read onfigfile.
+	config = ConfigParser(delimiters='=')
+	config.optionxform = str
+	config.read(configfile)
 	
 	if os.path.basename(configfile) == 'masscan.ini':
 
@@ -34,17 +31,12 @@ def main():
 		if args.drop:
 			db.drop_table('Masscanner')
 
-		# ConfigParser - read onfigfile.
-		config = ConfigParser(delimiters='=')
-		config.optionxform = str
-		config.read(configfile)
-		
 		# ConfigParser - declare dict values.
 		MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
 		PORTSCANS = {k: v for k, v in config['portscans'].items()}
 
 		# Sqlite - databse init.
-		db.create_table1()
+		db.create_table_masscanner()
 
 		# Masscanner - instance init (interface, rate, targets:-iL).
 		masscanner = ms.Masscanner(MSCONFIG['interface'], MSCONFIG['rate'], args.inputlist)
@@ -54,15 +46,17 @@ def main():
 			results = masscanner.run_scan(k, v)
 			# Sqlite - insert results (k:ipaddress, v[0]:port, v[1]:protocol, v[2]:description).
 			for k, v in results.items():
-				db.insert_result1(k, v[0], v[1], v[2])
+				db.insert_masscanner(k, v[0], v[1], v[2])
 				# Print results.
 				print(k, v[0], v[1], v[2])
 
-		# DEV - write database results to outfile.
+		# DEV - write database results to file.
 		for k, v in PORTSCANS.items():
+			filepath = f'./outfiles/masscanner/{k}.txt'
 			results = db.get_ipaddress_by_description(k)
-			with open(f'./outfiles/masscanner/{k}.txt', 'w+') as f1:
-				[f1.write(f'{result[0]}\n') for result in results]
+			if results != []:
+				with open(filepath, 'w+') as f1:
+					[f1.write(f'{result[0]}\n') for result in results]
 
 
 	elif os.path.basename(configfile) == 'nmap.ini':
@@ -71,17 +65,12 @@ def main():
 		if args.drop:
 			db.drop_table('Nmapper')
 
-		# ConfigParser - read onfigfile.
-		config = ConfigParser(delimiters='=')
-		config.optionxform = str
-		config.read(configfile)
-
 		# ConfigParser - declare dict values.
 		NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
 		NSESCANS = {k: v for k, v in config['nsescans'].items()}
 
 		# Sqlite - databse init.
-		db.create_table2()
+		db.create_table_nmapper()
 
 		# Nmapper - instance init.
 		nmapper = nm.Nmapper()
@@ -91,35 +80,49 @@ def main():
 		
 		# Nmapper - launch scan(s).
 		for k, v in NSESCANS.items():
+			logging.info(f'Using scan: {k} = {v}')
 			
 			# Sqlite - fetch targets by filtering the nse-script scan port.
 			results = [i[0] for i in db.get_ipaddress_by_port(v)]
 			targets = ' '.join(results)
+			logging.info(f'Found targets in databse.db via port: {v}')
 
+			# DEV - targets.
+			filepath = f'./outfiles/nmapper/targets.txt'
+			with open(filepath, 'w+') as f1:
+				[f1.write(f'{result}\n') for result in results]
+				logging.info(f'Targets written to: {f1.name}')
+			
 			# Nmapper - launch scan(s).
-			xml_file = f'./outfiles/xmlfiles/{k}.xml'
-			nmapper.run_scan(k, v, targets, xml_file)
+			xmlfile = f'./outfiles/xmlfiles/{k}.xml'
+			nmapper.run_scan(k, v, filepath, xmlfile)
 		
 			# XmlParser - read xml file and parse.
-			xmlparser.read_xml(xml_file)
+			xmlparser.read_xml(xmlfile)
 			# XmlParser - obtain hosts:lst from xml file.
 			hosts = xmlparser.get_hosts()
-			# XmlParser - obtain ipaddress(es) and nse-script scan result(s) from hosts:lst.
+			# XmlParser - obtain ipaddress(es) and nsescript scan result(s) from hosts:lst.
 			for host in hosts:
 				ipaddress = xmlparser.get_addr(host)
 				result = xmlparser.get_hostscript(host)
-				# Exclude hossts with no nse script-scan result(s).
+				# Exclude hossts with no nsescript scan result(s).
 				if result is not None:
-					print(f'{ipaddress}: {result}')
+					# Sqlite - insert results (ipaddress, result[2]:nseoutput, result[0]:nsescript).
+					db.insert_nmapper(ipaddress, result[2], result[0])
+					# Print results.
+					logging.info(f'{ipaddress}: {result[2]}')
+			logging.info(f'End of scan: {k}\n')
+		logging.info('All scans have completed.\n')
 
-					# DEV - # Sqlite - insert results ().
-					db.insert_result2(ipaddress, result[2], result[0])
-
-		# DEV - write database results to outfile.
+		# DEV - write database results to file.
 		for k, v in NSESCANS.items():
+			filepath = f'./outfiles/nmapper/{k}.txt'
 			results = db.get_ipaddress_by_nsescript(k)
-			with open(f'./outfiles/nmapper/{k}.txt', 'w+') as f1:
-				[f1.write(f'{result[0]}\n') for result in results]
+			if results != []:
+				logging.info(f'Found results in databse.db via nsescript: {k}')
+				with open(filepath, 'w+') as f1:
+					[f1.write(f'{result[0]}, {result[1]}\n') for result in results]
+					logging.info(f'Results written to: {f1.name}')
 
 
 if __name__ == '__main__':

@@ -9,8 +9,8 @@ c = conn.cursor()
 
 
 # Masscanner
-def create_table1():
-	''' Create table 1 '''
+def create_table_masscanner():
+	''' Create table Masscanner '''
 
 	try:
 		with conn:
@@ -25,7 +25,7 @@ def create_table1():
 
 
 # Masscanner
-def insert_result1(ipaddress, port, protocol, description):
+def insert_masscanner(ipaddress, port, protocol, description):
 	''' Insert result [(IP Address, Port, Protocol, Description)] '''
 	
 	with conn:
@@ -33,7 +33,7 @@ def insert_result1(ipaddress, port, protocol, description):
 		 {'ipaddress': ipaddress, 'port': port, 'protocol':protocol, 'description': description})
 
 
-# Masscanner
+# # Masscanner
 def get_ipaddress_by_port(port):
 	''' Get IP Address by filtering the port value.'''
 
@@ -52,14 +52,14 @@ def get_ipaddress_by_description(description):
 
 
 # Nmapper
-def create_table2():
-	''' Create table 2 '''
+def create_table_nmapper():
+	''' Create table Nmapper '''
 
 	try:
 		with conn:
 			c.execute("""CREATE TABLE Nmapper(
 				IPAddress text,
-				Finding text,
+				NSEResult text,
 				NSEScript text
 				)""")
 	except sqlite3.OperationalError:
@@ -67,12 +67,12 @@ def create_table2():
 
 
 # Nmapper
-def insert_result2(ipaddress, finding, nsescript):
-	''' Insert result [(IP Address, finding, nsename)] '''
+def insert_nmapper(ipaddress, nseresult, nsescript):
+	''' Insert result [(IP Address, nseresult, nsescript)] '''
 	
 	with conn:
-		c.execute("INSERT INTO Nmapper VALUES (:ipaddress, :finding, :nsescript)",
-		 {'ipaddress': ipaddress, 'finding': finding, 'nsescript': nsescript})
+		c.execute("INSERT INTO Nmapper VALUES (:ipaddress, :nseresult, :nsescript)",
+		 {'ipaddress': ipaddress, 'nseresult': nseresult, 'nsescript': nsescript})
 
 
 # Nmapper

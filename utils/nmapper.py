@@ -28,20 +28,21 @@ class Nmapper():
 		return parsed_ports
 
 
-	def run_scan(self, nse_script, ports, targets, xmlfile):
+	def run_scan(self, nsescript, ports, inputlist, xmlfile):
 		''' 
-		Scanner
-		arg(s)description:str, ports:lst/str
+		Launch Nmap scan via wrapper.
+		arg(s)nsescript:str, ports:lst/str, inputlist:str, xmlfile:str
 
 		'''
+		
 		# DEV
 		# Scrub ports from any potential user input error.
 		parsed_ports = self.parse_ports(ports)
 
 		# Nmap command.
-		cmd = f"nmap --script {nse_script} -p {parsed_ports} -Pn {targets} -oX {xmlfile}"
+		cmd = f"nmap -Pn --script {nsescript} -p {parsed_ports} -iL {inputlist} -oX {xmlfile}"
 		# DEV - print.
-		print(f'\nCommand: {cmd}')
+		logging.info(f'Executing command:\n{cmd}')
 		cmd = cmd.split(' ')
 
 		try:
