@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 import logging
 
 
-class NSEParser():
+class NseParser():
 	''' Nmap NSE Script Scan XML Parser. '''
 	
 	

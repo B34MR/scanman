@@ -12,7 +12,7 @@ def mkdir(directory):
 	try:
 		os.makedirs(directory, exist_ok = False)
 	except FileExistsError as e:
-		logging.warning(f'{e}')
+		logging.info(f'{e}')
 		pass
 	else:	
 		return directory

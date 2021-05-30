@@ -6,9 +6,14 @@ from rich.logging import RichHandler
 # from rich import box
 # from rich.panel import Panel
 from rich.theme import Theme
+from utils import arguments
 import logging
 # import sys
 
+
+# Args - init.
+args = arguments.parse_args()
+loglevel = args.loglevel
 
 # Rich console and theme init.
 themefile = './utils/theme.ini'
@@ -18,7 +23,7 @@ console = Console(theme=mytheme)
 # logger - Rich
 logging.basicConfig(
 	# filename='',
-	level='INFO',
+	level=loglevel,
 	format='%(message)s',
 	datefmt='[%X]',
 	handlers=[RichHandler(console=console, rich_tracebacks=True, omit_repeated_times=False)]

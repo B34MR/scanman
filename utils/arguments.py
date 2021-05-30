@@ -42,6 +42,7 @@ def parse_args():
   optional_group = parser.add_argument_group('optional_args')
   optional_group.add_argument('-iL', '--inputlist', type=str, required=False, default='', help='Input from list of hosts/networks')
   optional_group.add_argument('-d', '--drop', required=False, action='store_true', default='', help='Launch with clean database.')
+  optional_group.add_argument('-l', '--loglevel', type=str.upper, default='WARNING', choices=['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Configure logging level')
 
   # Mutually Exclusive group.
   # mutually_exclusive_group = parser.add_mutually_exclusive_group()
