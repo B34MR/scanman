@@ -53,7 +53,7 @@ class Masscanner():
 		# Masscan command.
 		cmd = f'masscan --interface {self.interface} --rate {self.rate} -iL {self.inputlist} -p {parsed_ports}'
 		# DEV - print.
-		print(f'\nCommand: {cmd}')
+		print(f'\n{cmd}')
 		cmd = cmd.split(' ')
 
 		try:

@@ -7,9 +7,6 @@ import logging
 class Nmapper():
 	''' Nmap base class wrapper '''
 
-	# def __init__(self, inputlist):
-	# 	self.inputlist = inputlist
-
 
 	def parse_ports(self, ports):
 		''' 
@@ -42,7 +39,7 @@ class Nmapper():
 		# Nmap command.
 		cmd = f"nmap -Pn --script {nsescript} -p {parsed_ports} -iL {inputlist} -oX {xmlfile}"
 		# DEV - print.
-		logging.info(f'Executing command:\n{cmd}')
+		print(f'{cmd}')
 		cmd = cmd.split(' ')
 
 		try:
