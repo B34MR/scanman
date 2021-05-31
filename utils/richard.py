@@ -3,8 +3,10 @@
 from rich.console import Console
 from rich.logging import RichHandler
 # from rich.table import Table
-# from rich import box
-# from rich.panel import Panel
+
+from rich import box
+from rich.panel import Panel
+
 from rich.theme import Theme
 from utils import arguments
 import logging
@@ -29,3 +31,11 @@ logging.basicConfig(
 	handlers=[RichHandler(console=console, rich_tracebacks=True, omit_repeated_times=False)]
 	)
 logging = logging.getLogger('rich')
+
+
+def banner(banner_title):
+	''' Rich util Banner.'''
+
+	print('\n')
+	console.print(Panel('', title=f'[h1]{banner_title}', 
+		height=1, width=95, box=box.DOUBLE_EDGE, style='dark_red'))

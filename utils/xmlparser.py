@@ -14,7 +14,7 @@ class NseParser():
 
 	def read_xml(self, filepath):
 		'''
-		Parses/reads an xml file and returns the xmlroot. 
+		Parses/read an xml file and return the 'nmaprun' xmlroot. 
 		arg(s):xmlfile:str
 		'''
 	
@@ -27,7 +27,8 @@ class NseParser():
 	
 	def get_hosts(self):
 		''' 
-		Return hosts:objlst 
+		Return all child 'hosts' elements from 'nmaprun' xmlroot.
+		hosts:objlst 
 		'''
 
 		# <nmaprun><host></host>
@@ -38,7 +39,7 @@ class NseParser():
 
 	def get_addr(self, host):
 		'''
-		Return IP address
+		Return 'addr' (ipaddress) element from 'address'.
 		arg(s):host:objstr
 		'''
 
@@ -51,7 +52,7 @@ class NseParser():
 
 	def get_hostscript(self, host):
 		''' 
-		Return the result from a nse script scan.
+		Return child elements from 'hostscript'.
 		args(s):host:objstr
 		'''
 		
@@ -73,6 +74,28 @@ class NseParser():
 			result = script_id, script_output, elem.text
 
 			return result
+
+	# DEV - fix the cls, self within the NseParser class.
+	def get_nse_results(self, filepath):
+		''' 
+		Read Nmap NSE XML (oX) file and return parsed results.
+		arg(s):filepath:str
+		'''
+		results = []
+		# XmlParser - read xml file and parse.
+		self.read_xml(filepath)
+		# XmlParser - obtain hosts:lst from xml file.
+		hosts = self.get_hosts()
+		# XmlParser - obtain ipaddress(es) and nsescript scan result(s) from hosts:lst.
+		for host in hosts:
+			ipaddress = self.get_addr(host)
+			result = self.get_hostscript(host)
+			# Exclude hossts with no nsescript scan result(s).
+			if result is not None:
+				i = (ipaddress, result[2], result[0])
+				results.append(i)
+		
+		return results
 
 
 # DEV - Sample Nmap XML layout with NSE hostscript result.

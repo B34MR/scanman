@@ -38,12 +38,10 @@ class Nmapper():
 
 		# Nmap command.
 		cmd = f"nmap -Pn --script {nsescript} -p {parsed_ports} -iL {inputlist} -oX {xmlfile}"
-		# DEV - print.
-		print(f'{cmd}')
-		cmd = cmd.split(' ')
+		cmdlst = cmd.split(' ')
 
 		try:
-			proc = subprocess.run(cmd, 
+			proc = subprocess.run(cmdlst, 
 				shell=False,
 				check=False,
 				capture_output=True,
@@ -56,4 +54,6 @@ class Nmapper():
 			# Debug print only.
 			logging.debug(f'STDOUT: {proc.stdout}')
 			logging.debug(f'STDERR: {proc.stderr}')
+			
+			return cmd
 

@@ -33,7 +33,7 @@ def insert_masscanner(ipaddress, port, protocol, description):
 		 {'ipaddress': ipaddress, 'port': port, 'protocol':protocol, 'description': description})
 
 
-# # Masscanner
+# Masscanner
 def get_ipaddress_by_port(port):
 	''' Get IP Address by filtering the port value.'''
 
