@@ -38,4 +38,4 @@ def banner(banner_title):
 
 	print('\n')
 	console.print(Panel('', title=f'[h1]{banner_title}', 
-		height=1, width=95, box=box.DOUBLE_EDGE, style='dark_red'))
+		height=1, width=125, box=box.DOUBLE_EDGE, style='deep_sky_blue4'))

@@ -60,7 +60,8 @@ def main():
 		ms = masscanner.Masscanner(MSCONFIG['interface'], MSCONFIG['rate'], ms_targetfile)
 		
 		# Banner
-		r.banner('Masscanner')
+		r.banner('Scanman')
+		r.console.print(f'[italic grey37]Masscanner\n')
 		
 		# Masscanner - launch scan(s).
 		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning') as status:
@@ -70,7 +71,7 @@ def main():
 				for k, v in results.items():
 					db.insert_masscanner(k, v[0], v[1], v[2])
 					# Print results.
-					r.console.print(f'[chartreuse3][+][/chartreuse3] {k}: {v[0]}')
+					r.console.print(f'{k}: {v[0]}')
 				r.console.print(f'[grey37]Completed:[/grey37] {key.upper()}\n')
 			r.console.print('All scans have completed!\n')
 
@@ -102,7 +103,8 @@ def main():
 		nm = nmapper.Nmapper()
 		
 		# Banner
-		r.banner('Nmap-Script Scanner')
+		r.banner('Scanman')
+		r.console.print(f'[italic grey37]Nmap Scripting Engine scanner\n')
 		
 		# Nmapper - launch scan(s).
 		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning') as status:
@@ -133,9 +135,9 @@ def main():
 				# DEV Print - Experimental SMB-Signing print.
 				for i in results:
 					if i[1] == 'Message signing enabled but not required':
-						r.console.print(f'[chartreuse3][+][/chartreuse3] {i[0]}: {i[1]}')
-					else:
-						r.console.print(f'[-] {i[0]}: {i[1]}')
+						r.console.print(f'{i[0]}:    [i]{i[1]}')
+					# else:
+					# 	r.console.print(f'{i[0]}: [i]{i[1]}')
 
 				r.console.print(f'[grey37]Completed:[/grey37] {k.upper()}\n')
 			r.console.print('All scans have completed!\n')
