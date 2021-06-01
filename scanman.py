@@ -60,12 +60,12 @@ def main():
 		ms = masscanner.Masscanner(MSCONFIG['interface'], MSCONFIG['rate'], ms_targetfile)
 		
 		# Banner
-		r.banner('Scanman')
+		r.banner('Scanman'.upper())
 		r.console.print(f'[italic grey37]Masscanner\n')
 		
 		# Masscanner - launch scan(s).
-		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning') as status:
-			for key, value in PORTSCANS.items():
+		for key, value in PORTSCANS.items():
+			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 				results = ms.run_scan(key, value)
 				# Sqlite - insert results (k:ipaddress, v[0]:port, v[1]:protocol, v[2]:description).
 				for k, v in results.items():
@@ -73,7 +73,7 @@ def main():
 					# Print results.
 					r.console.print(f'{k}: {v[0]}')
 				r.console.print(f'[grey37]Completed:[/grey37] {key.upper()}\n')
-			r.console.print('All scans have completed!\n')
+		r.console.print('[bold gold3]All scans have completed!\n')
 
 		# Sqlite - write database results to output file.
 		for k, v in PORTSCANS.items():
@@ -101,33 +101,34 @@ def main():
 
 		# Nmapper - instance init.
 		nm = nmapper.Nmapper()
+
+		# XmlNseParser - instance int.
+		xmlnse = xmlparser.NseParser()
 		
 		# Banner
-		r.banner('Scanman')
+		r.banner('Scanman'.upper())
 		r.console.print(f'[italic grey37]Nmap Scripting Engine scanner\n')
 		
 		# Nmapper - launch scan(s).
-		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning') as status:
-			for k, v in NSESCANS.items():
-				# r.console.print(f'[grey37]{k}:')
-				
-				# Sqlite - fetch targets by filtering the nse-script scan port.
-				results = [i[0] for i in db.get_ipaddress_by_port(v)]
-				# targets = ' '.join(results)
-				logging.info(f'Found targets in databse.db via port: {v}')
-				# Write targets to output file (targets are overwritten on each loop).
-				with open(nm_targetfile, 'w+') as f1:
-					[f1.write(f'{i}\n') for i in results]
-					logging.info(f'Targets written to: {f1.name}')
-				
+		for k, v in NSESCANS.items():
+			# Sqlite - fetch targets by filtering the nse-script scan port.
+			results = [i[0] for i in db.get_ipaddress_by_port(v)]
+			# targets = ' '.join(results)
+			logging.info(f'Found targets in databse.db via port: {v}')
+			# Write targets to output file (targets are overwritten on each loop).
+			with open(nm_targetfile, 'w+') as f1:
+				[f1.write(f'{i}\n') for i in results]
+				logging.info(f'Targets written to: {f1.name}')
+			
+			# DEV - split the loop, at this point?
+			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
 				# Nmapper - launch scan(s).
 				xmlfilepath = os.path.join(xml_dir, f'{k}.xml')
 				nm_cmd = nm.run_scan(k, v, nm_targetfile, xmlfilepath)
-				r.console.print(f'[white]{nm_cmd}')
+				# r.console.print(f'[white]{nm_cmd}')
 			
-				# DEV - fix the cls, self within the NseParser class.			
 				# XmlParser - read xml file.
-				results = xmlparser.NseParser().get_nse_results(xmlfilepath)
+				results = xmlnse.run(xmlfilepath)
 
 				# Sqlite - insert xml results (i[0]:ipaddress, i[1]:nseoutput, i[2]:nsescript).
 				[db.insert_nmapper(i[0], i[1], i[2]) for i in results if i != None]
@@ -139,8 +140,8 @@ def main():
 					# else:
 					# 	r.console.print(f'{i[0]}: [i]{i[1]}')
 
-				r.console.print(f'[grey37]Completed:[/grey37] {k.upper()}\n')
-			r.console.print('All scans have completed!\n')
+			r.console.print(f'[grey37]Completed:[/grey37] {k.upper()}\n')
+		r.console.print('[bold gold3]All scans have completed!\n')
 
 		# Sqlite - write database results to output file.
 		for k, v in NSESCANS.items():

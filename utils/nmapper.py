@@ -38,6 +38,8 @@ class Nmapper():
 
 		# Nmap command.
 		cmd = f"nmap -Pn --script {nsescript} -p {parsed_ports} -iL {inputlist} -oX {xmlfile}"
+		# DEV - Print
+		print(f'\n{cmd}')
 		cmdlst = cmd.split(' ')
 
 		try:

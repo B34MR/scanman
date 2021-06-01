@@ -54,10 +54,10 @@ class Masscanner():
 		cmd = f'masscan --interface {self.interface} --rate {self.rate} -iL {self.inputlist} -p {parsed_ports}'
 		# DEV - print.
 		print(f'\n{cmd}')
-		cmd = cmd.split(' ')
+		cmdlst = cmd.split(' ')
 
 		try:
-			proc = subprocess.run(cmd, 
+			proc = subprocess.run(cmdlst, 
 				shell=False,
 				check=False,
 				capture_output=True,

@@ -4,15 +4,12 @@ import xml.etree.ElementTree as ET
 import logging
 
 
-class NseParser():
+class NseParser:
 	''' Nmap NSE Script Scan XML Parser. '''
+	xmlroot = None
 	
 	
-	def __init__(self):
-		self.xmlroot = None
-
-
-	def read_xml(self, filepath):
+	def parse_xml(self, filepath):
 		'''
 		Parses/read an xml file and return the 'nmaprun' xmlroot. 
 		arg(s):xmlfile:str
@@ -75,15 +72,16 @@ class NseParser():
 
 			return result
 
-	# DEV - fix the cls, self within the NseParser class.
-	def get_nse_results(self, filepath):
+
+	def run(self, filepath):
 		''' 
-		Read Nmap NSE XML (oX) file and return parsed results.
+		Read Nmap NSE XML (oX) output file and return the final results.
 		arg(s):filepath:str
 		'''
+
 		results = []
 		# XmlParser - read xml file and parse.
-		self.read_xml(filepath)
+		self.parse_xml(filepath)
 		# XmlParser - obtain hosts:lst from xml file.
 		hosts = self.get_hosts()
 		# XmlParser - obtain ipaddress(es) and nsescript scan result(s) from hosts:lst.
