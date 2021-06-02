@@ -4,8 +4,18 @@ import subprocess
 import logging
 
 
-class Nmapper():
+class Nmapper:
 	''' Nmap base class wrapper '''
+
+	def __init__(self, nsescript, ports, inputlist, xmlfile):
+		''' Init arg(s)nsescript:str, ports:lst/str, inputlist:str, xmlfile:str '''
+		
+		self.nsescript = nsescript
+		self.ports = ports
+		self.inputlist = inputlist
+		self.xmlfile = xmlfile
+		self.cmd = \
+		f"nmap -Pn --script {self.nsescript} -p {self.ports} -iL {self.inputlist} -oX {self.xmlfile}"
 
 
 	def parse_ports(self, ports):
@@ -13,7 +23,7 @@ class Nmapper():
 		Scrub ports convert lst to str(if needed), remove any whitespaces
 		arg(s)ports:lst/str 
 		'''
-		# DEV
+		# FEATURE - support multiple ports.
 		p = ','.join(ports.split(',')).replace(' ','')
 		parsed_ports = p.replace(',',', ')
 		
@@ -25,22 +35,17 @@ class Nmapper():
 		return parsed_ports
 
 
-	def run_scan(self, nsescript, ports, inputlist, xmlfile):
+	def run_scan(self):
 		''' 
-		Launch Nmap scan via wrapper.
-		arg(s)nsescript:str, ports:lst/str, inputlist:str, xmlfile:str
-
+		Launch Nmap scan via subprocess wrapper.
 		'''
 		
-		# DEV
+		# FEATURE - support multiple ports.
 		# Scrub ports from any potential user input error.
-		parsed_ports = self.parse_ports(ports)
+		# parsed_ports = self.parse_ports(ports)
 
 		# Nmap command.
-		cmd = f"nmap -Pn --script {nsescript} -p {parsed_ports} -iL {inputlist} -oX {xmlfile}"
-		# DEV - Print
-		print(f'\n{cmd}')
-		cmdlst = cmd.split(' ')
+		cmdlst = self.cmd.split(' ')
 
 		try:
 			proc = subprocess.run(cmdlst, 
@@ -56,6 +61,3 @@ class Nmapper():
 			# Debug print only.
 			logging.debug(f'STDOUT: {proc.stdout}')
 			logging.debug(f'STDERR: {proc.stderr}')
-			
-			return cmd
-

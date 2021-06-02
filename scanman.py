@@ -31,20 +31,16 @@ def main():
 
 	# Args - init.
 	args = arguments.parse_args()
-
 	# Args - configfile.
 	configfile = args.configfile
-
 	# Args - inputlist
 	ms_targetfile = args.inputlist
-		
 	# ConfigParser - read onfigfile.
 	config = ConfigParser(delimiters='=')
 	config.optionxform = str
 	config.read(configfile)
 	
 	if os.path.basename(configfile) == 'masscan.ini':
-
 		# Args - droptable
 		if args.drop:
 			db.drop_table('Masscanner')
@@ -52,30 +48,32 @@ def main():
 		# ConfigParser - declare dict values.
 		MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
 		PORTSCANS = {k: v for k, v in config['portscans'].items()}
-
+		interface = MSCONFIG['interface']
+		rate = MSCONFIG['rate']
 		# Sqlite - databse init.
 		db.create_table_masscanner()
-
-		# Masscanner - instance init (interface, rate, targets:-iL).
-		ms = masscanner.Masscanner(MSCONFIG['interface'], MSCONFIG['rate'], ms_targetfile)
-		
+		# # Masscanner - instance init (interface, rate, targets:-iL).
+		# ms = masscanner.Masscanner(MSCONFIG['interface'], MSCONFIG['rate'], ms_targetfile)
 		# Banner
 		r.banner('Scanman'.upper())
 		r.console.print(f'[italic grey37]Masscanner\n')
 		
-		# Masscanner - launch scan(s).
+		# Masscanner - instance int and run scan.
 		for key, value in PORTSCANS.items():
+			ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
-				results = ms.run_scan(key, value)
+				results = ms.run_scan()
+
 				# Sqlite - insert results (k:ipaddress, v[0]:port, v[1]:protocol, v[2]:description).
 				for k, v in results.items():
 					db.insert_masscanner(k, v[0], v[1], v[2])
+					
 					# Print results.
 					r.console.print(f'{k}: {v[0]}')
 				r.console.print(f'[grey37]Completed:[/grey37] {key.upper()}\n')
 		r.console.print('[bold gold3]All scans have completed!\n')
 
-		# Sqlite - write database results to output file.
+		# Sqlite - write database results to outputfile.
 		for k, v in PORTSCANS.items():
 			filepath = os.path.join(ms_dir, f'{k}.txt')
 			results = db.get_ipaddress_by_description(k)
@@ -87,7 +85,6 @@ def main():
 
 
 	elif os.path.basename(configfile) == 'nmap.ini':
-
 		# Args - droptable
 		if args.drop:
 			db.drop_table('Nmapper')
@@ -95,55 +92,46 @@ def main():
 		# ConfigParser - declare dict values.
 		NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
 		NSESCANS = {k: v for k, v in config['nsescans'].items()}
-
 		# Sqlite - databse init.
 		db.create_table_nmapper()
-
-		# Nmapper - instance init.
-		nm = nmapper.Nmapper()
-
-		# XmlNseParser - instance int.
-		xmlnse = xmlparser.NseParser()
 		
 		# Banner
 		r.banner('Scanman'.upper())
 		r.console.print(f'[italic grey37]Nmap Scripting Engine scanner\n')
 		
-		# Nmapper - launch scan(s).
+		# Return - Nmap targetfile to disk.
 		for k, v in NSESCANS.items():
+			# FEATURE - support multiple ports.
 			# Sqlite - fetch targets by filtering the nse-script scan port.
 			results = [i[0] for i in db.get_ipaddress_by_port(v)]
-			# targets = ' '.join(results)
+			# DEV - targets in class init and class method.
 			logging.info(f'Found targets in databse.db via port: {v}')
 			# Write targets to output file (targets are overwritten on each loop).
 			with open(nm_targetfile, 'w+') as f1:
 				[f1.write(f'{i}\n') for i in results]
 				logging.info(f'Targets written to: {f1.name}')
 			
-			# DEV - split the loop, at this point?
+			# Nmapper - instance int and run scan.
+			xmlfile = os.path.join(xml_dir, f'{k}.xml')
+			nm = nmapper.Nmapper(k, v, nm_targetfile, xmlfile)
+			print(nm.cmd)
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
-				# Nmapper - launch scan(s).
-				xmlfilepath = os.path.join(xml_dir, f'{k}.xml')
-				nm_cmd = nm.run_scan(k, v, nm_targetfile, xmlfilepath)
-				# r.console.print(f'[white]{nm_cmd}')
+				nm.run_scan()
 			
-				# XmlParser - read xml file.
-				results = xmlnse.run(xmlfilepath)
-
-				# Sqlite - insert xml results (i[0]:ipaddress, i[1]:nseoutput, i[2]:nsescript).
-				[db.insert_nmapper(i[0], i[1], i[2]) for i in results if i != None]
-				
-				# DEV Print - Experimental SMB-Signing print.
-				for i in results:
+				# XmlParse - instance init, read xmlfile and return results to database.
+				xmlparse = xmlparser.NseParser()
+				xmlresults = xmlparse.run(xmlfile)
+				# Sqlite - insert xmlfile results (i[0]:ipaddress, i[1]:nseoutput, i[2]:nsescript).
+				[db.insert_nmapper(i[0], i[1], i[2]) for i in xmlresults if i != None]
+				# DEV - Experimental SMB-Signing print.
+				for i in xmlresults:
 					if i[1] == 'Message signing enabled but not required':
 						r.console.print(f'{i[0]}:    [i]{i[1]}')
-					# else:
-					# 	r.console.print(f'{i[0]}: [i]{i[1]}')
 
 			r.console.print(f'[grey37]Completed:[/grey37] {k.upper()}\n')
 		r.console.print('[bold gold3]All scans have completed!\n')
 
-		# Sqlite - write database results to output file.
+		# Sqlite - write database results to outputfile.
 		for k, v in NSESCANS.items():
 			filepath = os.path.join(nm_dir, f'{k}.txt')
 			results = db.get_ipaddress_by_nsescript(k)
