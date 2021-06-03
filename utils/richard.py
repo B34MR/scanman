@@ -1,16 +1,14 @@
 #!/usr/bin/env python3
 
+# from rich.table import Table
+from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
-# from rich.table import Table
-
-from rich import box
 from rich.panel import Panel
-
 from rich.theme import Theme
 from utils import arguments
 import logging
-# import sys
+
 
 
 # Args - init.

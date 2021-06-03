@@ -12,13 +12,13 @@ class Masscanner:
 		self.interface = interface
 		self.rate = rate
 		self.description = description
-		self.ports = ports
+		self.ports = self.scrub_ports(ports)
 		self.inputlist = inputlist
 		self.cmd = \
-		f'masscan --interface {self.interface} --rate {self.rate} -iL {self.inputlist} -p {parsed_ports}'
+		f'masscan --interface {self.interface} --rate {self.rate} -iL {self.inputlist} -p {self.ports}'
 
 	
-	def parse_ports(self, ports):
+	def scrub_ports(self, ports):
 		''' 
 		Scrub ports convert lst to str(if needed), remove any whitespaces
 		arg(s)ports:lst/str '''
@@ -26,9 +26,9 @@ class Masscanner:
 		# Convert lst to str.
 		portsstr = ''.join(ports)
 		# Remove white-space between ports and convert lst to str.
-		parsed_ports = str(portsstr.replace(' ','') )
+		scrubbed_ports = str(portsstr.replace(' ','') )
 
-		return parsed_ports
+		return scrubbed_ports
 
 
 	def parse_stdout(self, stdout):
@@ -48,8 +48,6 @@ class Masscanner:
 	def run_scan(self):
 		''' Launch Masscan via subprocess wrapper '''
 
-		# Scrub ports from any potential user input error.
-		parsed_ports = self.parse_ports(self.ports)
 		# Masscan command.
 		cmdlst = self.cmd.split(' ')
 
@@ -65,12 +63,12 @@ class Masscanner:
 			pass
 		else:
 			# Debug print only.
-			logging.debug(f'STDOUT: {proc.stdout}')
-			logging.debug(f'STDERR: {proc.stderr}')
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')
 			# Parse stdout, return dict.
 			results = self.parse_stdout(proc.stdout)
 			# Append description to dict v:lst
 			[results[k].append(self.description) for k in results]
-			logging.debug(f'RESULTS: {results}')
+			logging.debug(f'RESULTS:{results}')
 				
 			return results

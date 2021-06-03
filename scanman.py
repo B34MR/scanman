@@ -20,6 +20,9 @@ xml_dir = os.path.join(MAIN_DIR, 'xmlfiles')
 # Nmapper target/inputlist Filepath.
 nm_targetfile = os.path.join(nm_dir, 'targets.txt')
 
+# Banner
+r.banner('Scanman'.upper())
+
 # Create output dirs.
 directories = [ms_dir, nm_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
@@ -52,15 +55,14 @@ def main():
 		rate = MSCONFIG['rate']
 		# Sqlite - databse init.
 		db.create_table_masscanner()
-		# # Masscanner - instance init (interface, rate, targets:-iL).
-		# ms = masscanner.Masscanner(MSCONFIG['interface'], MSCONFIG['rate'], ms_targetfile)
-		# Banner
-		r.banner('Scanman'.upper())
+
+		# Header
 		r.console.print(f'[italic grey37]Masscanner\n')
 		
 		# Masscanner - instance int and run scan.
 		for key, value in PORTSCANS.items():
 			ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
+			print(ms.cmd)
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 				results = ms.run_scan()
 
@@ -95,8 +97,7 @@ def main():
 		# Sqlite - databse init.
 		db.create_table_nmapper()
 		
-		# Banner
-		r.banner('Scanman'.upper())
+		# Header
 		r.console.print(f'[italic grey37]Nmap Scripting Engine scanner\n')
 		
 		# Return - Nmap targetfile to disk.
