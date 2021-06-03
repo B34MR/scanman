@@ -60,12 +60,32 @@ class NseParser:
 			script = hostscript.find('script')
 			script_id = script.get('id')
 			script_output = script.get('output')
-			# <host><hostscript><script><table></table>
-			table = script.find('table')
-			# <host><hostscript><script><table><elem></elem>
-			elem = table.find('elem')
+			logging.debug(f'XMLPARSER:\n{script_output}')
+			# DEV - Consider breaking this ^ out into seperate func.
+			
+			# DEV - SMBv1
+			if script_id == 'smb-security-mode':
+				# <host><hostscript><script><elem><elem><elem></elem>
+				elemlst = script.findall('elem')
+				elem = elemlst[-1]
+			
+			# DEV - SMBv2
+			elif script_id == 'smb2-security-mode':
+				# <host><hostscript><script><table></table>
+				table = script.find('table')
+				# <host><hostscript><script><table><elem></elem>
+				elem = table.find('elem')
+			
+			# DEV - MS17-010.
+			elif script_id == 'smb-vuln-ms17-010':
+				# <host><hostscript><script><table></table>
+				table = script.find('table')
+				# <host><hostscript><script><table><elem><elem><elem></elem>
+				elemlst = table.findall('elem')
+				elem = elemlst[1]
+				
 		except AttributeError as e:
-			logging.debug(e)
+			logging.debug(f'{e}')
 			pass
 		else:
 			result = script_id, script_output, elem.text

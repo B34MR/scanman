@@ -105,7 +105,6 @@ def main():
 			# FEATURE - support multiple ports.
 			# Sqlite - fetch targets by filtering the nse-script scan port.
 			results = [i[0] for i in db.get_ipaddress_by_port(v)]
-			# DEV - targets in class init and class method.
 			logging.info(f'Found targets in databse.db via port: {v}')
 			# Write targets to output file (targets are overwritten on each loop).
 			with open(nm_targetfile, 'w+') as f1:
@@ -124,10 +123,10 @@ def main():
 				xmlresults = xmlparse.run(xmlfile)
 				# Sqlite - insert xmlfile results (i[0]:ipaddress, i[1]:nseoutput, i[2]:nsescript).
 				[db.insert_nmapper(i[0], i[1], i[2]) for i in xmlresults if i != None]
-				# DEV - Experimental SMB-Signing print.
+				# DEV - SMBv1/v2 signing print.
 				for i in xmlresults:
-					if i[1] == 'Message signing enabled but not required':
-						r.console.print(f'{i[0]}:    [i]{i[1]}')
+					if i[1] != 'Message signing enabled and required' and i[1] != 'required':
+						r.console.print(f'{i[0]}: [red]{i[1].upper()}')
 
 			r.console.print(f'[grey37]Completed:[/grey37] {k.upper()}\n')
 		r.console.print('[bold gold3]All scans have completed!\n')
