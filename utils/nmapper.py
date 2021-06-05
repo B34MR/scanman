@@ -6,7 +6,11 @@ import logging
 
 class Nmapper:
 	''' Nmap base class wrapper '''
+	
+	# Nmap version cmd.
+	version_cmd = 'nmap -version'
 
+	
 	def __init__(self, nsescript, ports, inputlist, xmlfile):
 		''' Init arg(s)nsescript:str, ports:lst/str, inputlist:str, xmlfile:str '''
 		
@@ -51,3 +55,27 @@ class Nmapper:
 			# Debug print only.
 			logging.info(f'STDOUT:\n{proc.stdout}')
 			logging.debug(f'STDERR:\n{proc.stderr}')
+
+	
+	def get_version(self):
+		''' Return Nmap Version number.'''
+		
+		# Nmap Version cmd.
+		cmdlst = self.version_cmd.split(' ')
+		
+		try:
+			proc = subprocess.run(cmdlst,
+				shell=False,
+				check=True,
+				capture_output=True,
+				text=True)
+		except Exception as e:
+			# Set check=True for the exception to catch.
+			logging.exception(e)
+			raise e
+		else:
+			# Debug print only.
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')
+
+		return proc.stdout.split(' ')[2]

@@ -76,14 +76,30 @@ class NseParser:
 				# <host><hostscript><script><table><elem></elem>
 				elem = table.find('elem')
 			
-			# DEV - MS17-010.
+			# DEV - MS17-010 RCESMBv1 
 			elif script_id == 'smb-vuln-ms17-010':
 				# <host><hostscript><script><table></table>
 				table = script.find('table')
 				# <host><hostscript><script><table><elem><elem><elem></elem>
 				elemlst = table.findall('elem')
 				elem = elemlst[1]
-				
+
+			# DEV - MS08-067
+			elif script_id == 'smb-vuln-ms08-067':
+				# <host><hostscript><script><table></table>
+				table = script.find('table')
+				# <host><hostscript><script><table><elem><elem><elem></elem>
+				elemlst = table.findall('elem')
+				elem = elemlst[1]
+
+			# DEV - CVE2009-3103 Server2008/Vista
+			elif script_id == 'smb-vuln-cve2009-3103':
+				# <host><hostscript><script><table></table>
+				table = script.find('table')
+				# <host><hostscript><script><table><elem><elem><elem></elem>
+				elemlst = table.findall('elem')
+				elem = elemlst[1]
+
 		except AttributeError as e:
 			logging.debug(f'{e}')
 			pass
@@ -115,6 +131,7 @@ class NseParser:
 		
 		return results
 
+# Tested with Nmap version 7.91.
 
 # DEV - Sample Nmap XML layout with NSE hostscript result.
 # <nmaprun>

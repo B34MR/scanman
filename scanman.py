@@ -11,11 +11,16 @@ from configparser import ConfigParser
 import os
 import logging
 
+
+# Stable versions.
+ms_stableversion = '1.3.2'
+nm_stableversion = '7.91'
+
 # Outputfile dirs.
 MAIN_DIR = './outputfiles'
-ms_dir = os.path.join(MAIN_DIR, 'masscanner')
-nm_dir = os.path.join(MAIN_DIR, 'nmapper')
-xml_dir = os.path.join(MAIN_DIR, 'xmlfiles')
+ms_dir = os.path.join(MAIN_DIR, 'portscans')
+nm_dir = os.path.join(MAIN_DIR, 'findings')
+xml_dir = os.path.join(MAIN_DIR, 'xml')
 
 # Nmapper target/inputlist Filepath.
 nm_targetfile = os.path.join(nm_dir, 'targets.txt')
@@ -57,12 +62,14 @@ def main():
 		db.create_table_masscanner()
 
 		# Header
-		r.console.print(f'[italic grey37]Masscanner\n')
+		r.console.print(f'[italic grey37]Masscan Scanner\n')
+		r.console.print(f'[italic grey37]Using Masscan Version 1.32\n')
 		
 		# Masscanner - instance int and run scan.
 		for key, value in PORTSCANS.items():
 			ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
 			print(ms.cmd)
+			r.console.print(f'[grey37]Launched:[/grey37] {key.upper()}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 				results = ms.run_scan()
 
@@ -98,7 +105,7 @@ def main():
 		db.create_table_nmapper()
 		
 		# Header
-		r.console.print(f'[italic grey37]Nmap Scripting Engine scanner\n')
+		r.console.print(f'[italic grey37]Nmap Scripting Engine Scanner')
 		
 		# Return - Nmap targetfile to disk.
 		for k, v in NSESCANS.items():
@@ -114,18 +121,33 @@ def main():
 			# Nmapper - instance int and run scan.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
 			nm = nmapper.Nmapper(k, v, nm_targetfile, xmlfile)
+			
+			# DEV - version check.
+			# Nmapmer - Nmap version check.
+			nm_currentversion = nm.get_version()
+			if nm_currentversion == nm_stableversion:
+				r.console.print(f'[italic grey37]Using Nmap Version {nm_currentversion}\n')
+			else:
+				r.console.print(f'[red]Warning: Unsupported Nmap Version {nm_currentversion} detected.\n')
+
+			# Nmapper - print cmd to stdout.
 			print(nm.cmd)
+			
+			r.console.print(f'[grey37]Launched:[/grey37] {k.upper()}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
 				nm.run_scan()
 			
 				# XmlParse - instance init, read xmlfile and return results to database.
 				xmlparse = xmlparser.NseParser()
 				xmlresults = xmlparse.run(xmlfile)
-				# Sqlite - insert xmlfile results (i[0]:ipaddress, i[1]:nseoutput, i[2]:nsescript).
-				[db.insert_nmapper(i[0], i[1], i[2]) for i in xmlresults if i != None]
-				# DEV - SMBv1/v2 signing print.
+				# DEV
+				invalidresults = [None, 'Message signing enabled and required', 'required']
+				# Omit positive results from database insertion and printing to stdout.
 				for i in xmlresults:
 					if i[1] != 'Message signing enabled and required' and i[1] != 'required':
+						# Sqlite - insert xmlfile results (i[0]:ipaddress, i[1]:nseoutput, i[2]:nsescript).
+						[db.insert_nmapper(i[0], i[1], i[2]) for i in xmlresults if i != None]
+						# Print to stdout.
 						r.console.print(f'{i[0]}: [red]{i[1].upper()}')
 
 			r.console.print(f'[grey37]Completed:[/grey37] {k.upper()}\n')
