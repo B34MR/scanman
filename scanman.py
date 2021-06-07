@@ -62,13 +62,24 @@ def main():
 		db.create_table_masscanner()
 
 		# Header
-		r.console.print(f'[italic grey37]Masscan Scanner\n')
-		r.console.print(f'[italic grey37]Using Masscan Version 1.32\n')
+		r.console.print(f'[italic grey37]Masscanner\n')
 		
 		# Masscanner - instance int and run scan.
 		for key, value in PORTSCANS.items():
 			ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
+			
+			# DEV - version check.
+			# Masscanner - Masscan version check.
+			ms_currentversion = ms.get_version()
+			if ms_currentversion == ms_stableversion:
+				r.console.print(f'[italic grey37]Using Masscan version {ms_currentversion}\n')
+			else:
+				r.console.print(f'[red]Warning: Unsupported Masscan version {ms_currentversion} detected\n')
+			
+			# Masscanner - print cmd to stdout.
 			print(ms.cmd)
+			
+			# Masscanner - launch scam.
 			r.console.print(f'[grey37]Launched:[/grey37] {key.upper()}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 				results = ms.run_scan()
@@ -126,13 +137,14 @@ def main():
 			# Nmapmer - Nmap version check.
 			nm_currentversion = nm.get_version()
 			if nm_currentversion == nm_stableversion:
-				r.console.print(f'[italic grey37]Using Nmap Version {nm_currentversion}\n')
+				r.console.print(f'[italic grey37]Using Nmap version {nm_currentversion}\n')
 			else:
-				r.console.print(f'[red]Warning: Unsupported Nmap Version {nm_currentversion} detected.\n')
+				r.console.print(f'[red]Warning: Unsupported Nmap version {nm_currentversion} detected\n')
 
 			# Nmapper - print cmd to stdout.
 			print(nm.cmd)
 			
+			# Nmapper - launch scam.
 			r.console.print(f'[grey37]Launched:[/grey37] {k.upper()}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
 				nm.run_scan()

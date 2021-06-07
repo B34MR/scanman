@@ -7,6 +7,9 @@ import logging
 class Masscanner:
 	''' Masscan base class wrapper '''
 
+	# Masscan version cmd.
+	version_cmd = 'masscan --version'
+
 	def __init__(self, interface, rate, description, ports, inputlist):
 		''' Init arg(s)interface:str, rate:str, description:str, ports:lst/str, inputlist:str '''
 		self.interface = interface
@@ -16,6 +19,30 @@ class Masscanner:
 		self.inputlist = inputlist
 		self.cmd = \
 		f'masscan --interface {self.interface} --rate {self.rate} -iL {self.inputlist} -p {self.ports}'
+
+
+	def get_version(self):
+		''' Return Masscan version:str'''
+		
+		# Masscan version cmd.
+		cmdlst = self.version_cmd.split(' ')
+		
+		try:
+			proc = subprocess.run(cmdlst,
+				shell=False,
+				check=False,
+				capture_output=True,
+				text=True)
+		except Exception as e:
+			# Set check=True for the exception to catch.
+			logging.exception(e)
+			raise e
+		else:
+			# Debug print only.
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')
+		
+		return proc.stdout.split(' ')[2]
 
 	
 	def scrub_ports(self, ports):
