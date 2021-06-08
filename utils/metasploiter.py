@@ -5,19 +5,52 @@ import subprocess
 
 
 class Metasploiter:
-	''' '''
+	''' Metasploit class wrapper '''
 
-	def __init__(self, msfmodule, rhostfile):
+	# MFS version cmd.
+	version_cmd = f'msfconsole -v'
+
+	
+	def __init__(self, msfmodule, rport, rhostfile):
 		''' '''
-		self.msfcmd =  f'msfconsole -n -q -x'
-		self.modulecmd =  f"use {msfmodule}; set RHOST file:{rhostfile}; grep '[+]' check; exit"
-		self.cmd = f'{self.msfcmd} "{self.modulecmd}"'
+		self.msfmodule = msfmodule
+		self.rport = rport
+		self.rhostfile = rhostfile
+		self.precmd =  f'msfconsole -n -q -x'
+		self.modulecmd =  f"use {self.msfmodule}; set RPORT {self.rport}; set RHOST file:{self.rhostfile}; grep '[+]' run; exit"
+		self.cmd = f'{self.precmd} "{self.modulecmd}"'
+
+
+	def get_version(self):
+		'''Return Metasploit version:str '''
+		
+		cmdlst = self.version_cmd.split(' ')
+
+		try:
+			proc = subprocess.run(cmdlst,
+				shell=False,
+				check=True,
+				capture_output=True,
+				text=True
+				)
+		except Exception as e:
+			# Set check=True for the exception to catch.
+			logging.exception(e)
+			raise e
+		else:
+			# Debug print only.
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')
+
+			return proc.stderr.split(' ')[2]
 
 
 	def run_scan(self):
-		''' '''
-		
-		cmdlst = self.msfcmd.split(' ')
+		''' Launch Metasploit scan via subprocess wrapper '''
+
+		# DEV - reconfig class attributes.
+		# Metasploit cmd.
+		cmdlst = self.precmd.split(' ')
 		cmdlst.append(self.modulecmd)
 
 		try:
@@ -31,25 +64,8 @@ class Metasploiter:
 			logging.exception(e)
 			raise e
 		else:
-			print(proc.stdout)
-			print(proc.stderr)
+			# Debug print only.
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')
 
-
-def main():
-	''' '''
-	
-	# Vars
-	msfmodule = 'auxiliary/scanner/rdp/cve_2019_0708_bluekeep'
-	rhostfile = './outputfiles/portscans/rdp.txt'
-
-	# Metasploiter - instance init.
-	metasploiter = Metasploiter(msfmodule, rhostfile)
-	# Metasploiter - print cmd to stdout.
-	print(metasploiter.cmd)
-	# Metasploiter - launch scan.
-	msfscan = metasploiter.run_scan()
-	msfscan
-
-
-if __name__ == '__main__':
-	main()
+			return proc.stdout

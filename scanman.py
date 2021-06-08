@@ -22,8 +22,8 @@ ms_dir = os.path.join(MAIN_DIR, 'portscans')
 nm_dir = os.path.join(MAIN_DIR, 'findings')
 xml_dir = os.path.join(MAIN_DIR, 'xml')
 
-# Nmapper target/inputlist Filepath.
-nm_targetfile = os.path.join(nm_dir, 'targets.txt')
+# Nmap / Metasploit temp target/inputlist filepath.
+tmp_targetfile = os.path.join(MAIN_DIR, 'targets.txt')
 
 # Banner
 r.banner('Scanman'.upper())
@@ -110,7 +110,7 @@ def main():
 			db.drop_table('Nmapper')
 
 		# ConfigParser - declare dict values.
-		NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
+		# NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
 		NSESCANS = {k: v for k, v in config['nsescans'].items()}
 		# Sqlite - databse init.
 		db.create_table_nmapper()
@@ -125,13 +125,13 @@ def main():
 			results = [i[0] for i in db.get_ipaddress_by_port(v)]
 			logging.info(f'Found targets in databse.db via port: {v}')
 			# Write targets to output file (targets are overwritten on each loop).
-			with open(nm_targetfile, 'w+') as f1:
+			with open(tmp_targetfile, 'w+') as f1:
 				[f1.write(f'{i}\n') for i in results]
 				logging.info(f'Targets written to: {f1.name}')
 			
 			# Nmapper - instance int and run scan.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
-			nm = nmapper.Nmapper(k, v, nm_targetfile, xmlfile)
+			nm = nmapper.Nmapper(k, v, tmp_targetfile, xmlfile)
 			
 			# DEV - version check.
 			# Nmapmer - Nmap version check.
@@ -174,6 +174,50 @@ def main():
 				with open(filepath, 'w+') as f1:
 					[f1.write(f'{result[0]}, {result[1]}\n') for result in results]
 					r.console.print(f'Results written to: {f1.name}')
+
+	
+	elif os.path.basename(configfile) == 'metasploit.ini':
+		from utils import metasploiter
+
+		# Args - droptable
+		# if args.drop:
+		# 	db.drop_table('Metasploiter')
+
+		# Args - inputlist
+		inputlist = args.inputlist
+
+		# Header
+		r.console.print(f'[italic grey37]Metasploit\n')
+		# metasploit1 = metasploiter.Metasploiter(None, None, None)
+		# currentversion = metasploit1.get_version()
+		# # DEV - version check, convert to func.
+		# if currentversion == '6.0.30-dev':
+		# 	r.console.print(f'[italic grey37]Using Metasploit version {currentversion}\n')
+		# else:
+		# 	r.console.print(f'[red]Warning: Unsupported Metasploit version {currentversion} detected\n')
+
+		# ConfigParser - declare dict values.
+		MSFMODULES = {k: v for k, v in config['msfmodules'].items()}
+		for k, v in MSFMODULES.items():
+			
+			# DEV - convert to func.
+			# FEATURE - support multiple ports.
+			# Sqlite - fetch targets by filtering the nse-script scan port.
+			results = [i[0] for i in db.get_ipaddress_by_port(v)]
+			logging.info(f'Found targets in databse.db via port: {v}')
+			# Write targets to output file (targets are overwritten on each loop).
+			with open(tmp_targetfile, 'w+') as f1:
+				[f1.write(f'{i}\n') for i in results]
+				logging.info(f'Targets written to: {f1.name}')
+
+			metasploit = metasploiter.Metasploiter(k, v, tmp_targetfile)
+			# print(metasploit.get_version())
+			print(metasploit.cmd)
+			results = metasploit.run_scan()
+			# Print result.
+			result = results.split('targets.txt')
+			print(f'{result[1]}')
+
 
 
 if __name__ == '__main__':
