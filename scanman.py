@@ -34,6 +34,29 @@ dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
 
+def func(string):
+	# importing the module
+	import re
+	# declaring the regex pattern for IP addresses
+	pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.)
+	{3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+	# initializing the list objects
+	valid =[]
+	invalid=[] 
+	# extracting the IP addresses
+	for line in string:
+		line = line.rstrip()
+		result = pattern.search(line)
+		# valid IP addresses
+		if result:
+			valid.append(line)
+			return valid
+			# # invalid IP addresses 
+			# else:
+			#   invalid.append(line)
+			#   return invalid
+
+
 def main():
 	''' Main Func '''
 
@@ -214,9 +237,14 @@ def main():
 			# print(metasploit.get_version())
 			print(metasploit.cmd)
 			results = metasploit.run_scan()
-			# Print result.
-			result = results.split('targets.txt')
-			print(f'{result[1]}')
+		
+			# DEV - find all matches for ip address in results.
+			import re
+			pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+			all_matches = re.finditer(pattern, results)
+			r.console.print(f'[grey37]Launched:[/grey37] {os.path.basename(k.upper())}')
+			[print(match.group()) for match in all_matches]
+			print('\n')
 
 
 
