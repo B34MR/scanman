@@ -5,7 +5,7 @@ import logging
 
 
 class Masscanner:
-	''' Masscan base class wrapper '''
+	''' Masscan class wrapper '''
 
 	# Masscan version cmd.
 	version_cmd = 'masscan --version'

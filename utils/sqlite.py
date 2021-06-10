@@ -51,6 +51,38 @@ def get_ipaddress_by_description(description):
 	return c.fetchall()
 
 
+# Metasploiter
+def create_table_metasploiter():
+	''' Create table Nmapper '''
+
+	try:
+		with conn:
+			c.execute("""CREATE TABLE Metasploiter(
+				IPAddress text,
+				MSFModule text
+				)""")
+	except sqlite3.OperationalError:
+		pass
+
+
+# Metasploiter
+def insert_metasploiter(ipaddress, msfmodule):
+	''' Insert result [(ipaddress, msfmodule)] '''
+	
+	with conn:
+		c.execute("INSERT INTO Metasploiter VALUES (:ipaddress, :msfmodule)",
+		 {'ipaddress': ipaddress, 'msfmodule': msfmodule})
+
+
+# Metasploiter
+def get_ipaddress_by_msfmodule(msfmodule):
+	''' Get IP Address by filtering the msfmodule value.'''
+
+	c.execute("SELECT * FROM Metasploiter WHERE msfmodule=:msfmodule", {'msfmodule': msfmodule})
+	
+	return c.fetchall()
+
+
 # Nmapper
 def create_table_nmapper():
 	''' Create table Nmapper '''
@@ -59,20 +91,20 @@ def create_table_nmapper():
 		with conn:
 			c.execute("""CREATE TABLE Nmapper(
 				IPAddress text,
-				NSEResult text,
-				NSEScript text
+				NSEScript text,
+				NSESResult text
 				)""")
 	except sqlite3.OperationalError:
 		pass
 
 
 # Nmapper
-def insert_nmapper(ipaddress, nseresult, nsescript):
-	''' Insert result [(IP Address, nseresult, nsescript)] '''
+def insert_nmapper(ipaddress, nsescript, nseresult):
+	''' Insert result [(ipaddress, nsescript, nseresult)] '''
 	
 	with conn:
-		c.execute("INSERT INTO Nmapper VALUES (:ipaddress, :nseresult, :nsescript)",
-		 {'ipaddress': ipaddress, 'nseresult': nseresult, 'nsescript': nsescript})
+		c.execute("INSERT INTO Nmapper VALUES (:ipaddress, :nsescript, :nseresult)",
+		 {'ipaddress': ipaddress, 'nsescript': nsescript, 'nseresult': nseresult})
 
 
 # Nmapper

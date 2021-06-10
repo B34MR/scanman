@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import arguments
+from utils import metasploiter
 from utils import masscanner
 from utils import mkdir
 from utils import nmapper
@@ -9,6 +10,7 @@ from utils import sqlite as db
 from utils import xmlparser
 from configparser import ConfigParser
 import os
+import re
 import logging
 
 
@@ -16,6 +18,7 @@ import logging
 ms_stableversion = '1.3.2'
 nm_stableversion = '7.91'
 
+# DEV - rename vars.
 # Outputfile dirs.
 MAIN_DIR = './outputfiles'
 ms_dir = os.path.join(MAIN_DIR, 'portscans')
@@ -103,17 +106,16 @@ def main():
 			print(ms.cmd)
 			
 			# Masscanner - launch scam.
-			r.console.print(f'[grey37]Launched:[/grey37] {key.upper()}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 				results = ms.run_scan()
+				r.console.print(f'[grey37]{key.upper()}')
 
 				# Sqlite - insert results (k:ipaddress, v[0]:port, v[1]:protocol, v[2]:description).
 				for k, v in results.items():
 					db.insert_masscanner(k, v[0], v[1], v[2])
-					
 					# Print results.
 					r.console.print(f'{k}: {v[0]}')
-				r.console.print(f'[grey37]Completed:[/grey37] {key.upper()}\n')
+				# r.console.print(f'[grey37]Completed:[/grey37] {key.upper()}\n')
 		r.console.print('[bold gold3]All scans have completed!\n')
 
 		# Sqlite - write database results to outputfile.
@@ -127,11 +129,65 @@ def main():
 					r.console.print(f'Results written to: {f1.name}')
 
 
+	elif os.path.basename(configfile) == 'metasploit.ini':
+		# Args - droptable
+		if args.drop:
+			db.drop_table('Metasploiter')
+		# DEV # Args - inputlist
+		inputlist = args.inputlist
+		# ConfigParser - declare dict values.
+		MSFMODULES = {k: v for k, v in config['msfmodules'].items()}
+		# Sqlite - database init.
+		db.create_table_metasploiter()
+		
+		# Header
+		r.console.print(f'[italic grey37]Metasploit\n')
+		
+		for k, v in MSFMODULES.items():
+			# DEV - convert to func. # FEATURE - support multiple ports.
+			# Sqlite - fetch targets by filtering the metasploiter port (v).
+			results = [i[0] for i in db.get_ipaddress_by_port(v)]
+			logging.info(f'Found targets in databse.db via port: {v}')
+			# Write targets to temp outputfile (targets are overwritten on each loop).
+			with open(tmp_targetfile, 'w+') as f1:
+				[f1.write(f'{i}\n') for i in results]
+				logging.info(f'Targets written to: {f1.name}')
+			
+			# Metasploiter - instance init and run scan.
+			metasploit = metasploiter.Metasploiter(k, v, tmp_targetfile)
+			# Metasploiter - print cmd to stdout.
+			print(metasploit.cmd)
+			# Metasploiter - launch scan.
+			results = metasploit.run_scan()
+			r.console.print(f'[grey37]{os.path.basename(k.upper())}')
+			
+			# Regex - ipv4 pattern
+			pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+			# Regex -  find all matches for ipv4 addresses in metasploiter results.
+			all_matches = re.finditer(pattern, results)
+			# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
+			for match in all_matches:
+				db.insert_metasploiter(match.group(), os.path.basename(k))
+				# Print metasploiter results to stdout.
+				print(match.group())
+			print('\n')
+		r.console.print('[bold gold3]All scans have completed!\n')
+		
+		# Sqlite - write database results to outputfile.
+		for k, v in MSFMODULES.items():
+			filepath = os.path.join(nm_dir, f'{os.path.basename(k)}.txt')
+			results = db.get_ipaddress_by_msfmodule(os.path.basename(k))
+			if results != []:
+				logging.info(f'Found results in databse.db via msfmodule: {os.path.basename(k)}')
+				with open(filepath, 'w+') as f1:
+					[f1.write(f'{result[0]}, {result[1]}\n') for result in results]
+					r.console.print(f'Results written to: {f1.name}')
+
+
 	elif os.path.basename(configfile) == 'nmap.ini':
 		# Args - droptable
 		if args.drop:
 			db.drop_table('Nmapper')
-
 		# ConfigParser - declare dict values.
 		# NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
 		NSESCANS = {k: v for k, v in config['nsescans'].items()}
@@ -144,15 +200,15 @@ def main():
 		# Return - Nmap targetfile to disk.
 		for k, v in NSESCANS.items():
 			# FEATURE - support multiple ports.
-			# Sqlite - fetch targets by filtering the nse-script scan port.
+			# Sqlite - fetch targets by filtering the nse-scan port (v).
 			results = [i[0] for i in db.get_ipaddress_by_port(v)]
 			logging.info(f'Found targets in databse.db via port: {v}')
-			# Write targets to output file (targets are overwritten on each loop).
+			# Write targets to temp outputfile (targets are overwritten on each loop).
 			with open(tmp_targetfile, 'w+') as f1:
 				[f1.write(f'{i}\n') for i in results]
 				logging.info(f'Targets written to: {f1.name}')
 			
-			# Nmapper - instance int and run scan.
+			# Nmapper - instance init and run scan.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
 			nm = nmapper.Nmapper(k, v, tmp_targetfile, xmlfile)
 			
@@ -168,7 +224,7 @@ def main():
 			print(nm.cmd)
 			
 			# Nmapper - launch scam.
-			r.console.print(f'[grey37]Launched:[/grey37] {k.upper()}')
+			r.console.print(f'[grey37]{k.upper()}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
 				nm.run_scan()
 			
@@ -180,12 +236,12 @@ def main():
 				# Omit positive results from database insertion and printing to stdout.
 				for i in xmlresults:
 					if i[1] != 'Message signing enabled and required' and i[1] != 'required':
-						# Sqlite - insert xmlfile results (i[0]:ipaddress, i[1]:nseoutput, i[2]:nsescript).
-						[db.insert_nmapper(i[0], i[1], i[2]) for i in xmlresults if i != None]
-						# Print to stdout.
+						# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:nsescript, i[1]:nseoutput).
+						[db.insert_nmapper(i[0], i[2], i[1]) for i in xmlresults if i != None]
+						# Print nse-scan results to stdout.
 						r.console.print(f'{i[0]}: [red]{i[1].upper()}')
 
-			r.console.print(f'[grey37]Completed:[/grey37] {k.upper()}\n')
+			# r.console.print(f'[grey37]Completed:[/grey37]\n')
 		r.console.print('[bold gold3]All scans have completed!\n')
 
 		# Sqlite - write database results to outputfile.
@@ -197,55 +253,6 @@ def main():
 				with open(filepath, 'w+') as f1:
 					[f1.write(f'{result[0]}, {result[1]}\n') for result in results]
 					r.console.print(f'Results written to: {f1.name}')
-
-	
-	elif os.path.basename(configfile) == 'metasploit.ini':
-		from utils import metasploiter
-
-		# Args - droptable
-		# if args.drop:
-		# 	db.drop_table('Metasploiter')
-
-		# Args - inputlist
-		inputlist = args.inputlist
-
-		# Header
-		r.console.print(f'[italic grey37]Metasploit\n')
-		# metasploit1 = metasploiter.Metasploiter(None, None, None)
-		# currentversion = metasploit1.get_version()
-		# # DEV - version check, convert to func.
-		# if currentversion == '6.0.30-dev':
-		# 	r.console.print(f'[italic grey37]Using Metasploit version {currentversion}\n')
-		# else:
-		# 	r.console.print(f'[red]Warning: Unsupported Metasploit version {currentversion} detected\n')
-
-		# ConfigParser - declare dict values.
-		MSFMODULES = {k: v for k, v in config['msfmodules'].items()}
-		for k, v in MSFMODULES.items():
-			
-			# DEV - convert to func.
-			# FEATURE - support multiple ports.
-			# Sqlite - fetch targets by filtering the nse-script scan port.
-			results = [i[0] for i in db.get_ipaddress_by_port(v)]
-			logging.info(f'Found targets in databse.db via port: {v}')
-			# Write targets to output file (targets are overwritten on each loop).
-			with open(tmp_targetfile, 'w+') as f1:
-				[f1.write(f'{i}\n') for i in results]
-				logging.info(f'Targets written to: {f1.name}')
-
-			metasploit = metasploiter.Metasploiter(k, v, tmp_targetfile)
-			# print(metasploit.get_version())
-			print(metasploit.cmd)
-			results = metasploit.run_scan()
-		
-			# DEV - find all matches for ip address in results.
-			import re
-			pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
-			all_matches = re.finditer(pattern, results)
-			r.console.print(f'[grey37]Launched:[/grey37] {os.path.basename(k.upper())}')
-			[print(match.group()) for match in all_matches]
-			print('\n')
-
 
 
 if __name__ == '__main__':
