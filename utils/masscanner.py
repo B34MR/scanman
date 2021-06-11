@@ -20,12 +20,13 @@ class Masscanner:
 		self.cmd = \
 		f'masscan --interface {self.interface} --rate {self.rate} -iL {self.inputlist} -p {self.ports}'
 
-
-	def get_version(self):
+	
+	@classmethod
+	def get_version(cls):
 		''' Return Masscan version:str'''
 		
 		# Masscan version cmd.
-		cmdlst = self.version_cmd.split(' ')
+		cmdlst = cls.version_cmd.split(' ')
 		
 		try:
 			proc = subprocess.run(cmdlst,

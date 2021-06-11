@@ -22,11 +22,12 @@ class Nmapper:
 		f"nmap -Pn --script {self.nsescript} -p {self.ports} -iL {self.inputlist} -oX {self.xmlfile}"
 
 
-	def get_version(self):
+	@classmethod
+	def get_version(cls):
 		''' Return Nmap version:str'''
 		
 		# Nmap Version cmd.
-		cmdlst = self.version_cmd.split(' ')
+		cmdlst = cls.version_cmd.split(' ')
 		
 		try:
 			proc = subprocess.run(cmdlst,

@@ -21,10 +21,11 @@ class Metasploiter:
 		self.cmd = f'{self.precmd} "{self.modulecmd}"'
 
 
-	def get_version(self):
+	@classmethod
+	def get_version(cls):
 		'''Return Metasploit version:str '''
 		
-		cmdlst = self.version_cmd.split(' ')
+		cmdlst = cls.version_cmd.split(' ')
 
 		try:
 			proc = subprocess.run(cmdlst,
@@ -41,8 +42,11 @@ class Metasploiter:
 			# Debug print only.
 			logging.info(f'STDOUT:\n{proc.stdout}')
 			logging.debug(f'STDERR:\n{proc.stderr}')
+			# Convert version-branch to version number only 
+			# i.e '6.0.30-dev' to '6.0.30'
+			output = proc.stderr.split(' ')[2]
 
-			return proc.stderr.split(' ')[2]
+			return output.split('-')[0]
 
 
 	def run_scan(self):
