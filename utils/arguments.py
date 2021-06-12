@@ -21,7 +21,7 @@ def parse_args():
     python3 scanman.py <configfile>
     
   Positional argument(s):
-    [configfile]: Input from configuration file (defaults to './configs/internal.ini').
+    [configfile]: Input from configuration file (defaults to './configs/masscan.ini').
 
   Optional argument(s):
     [configfile]: Input from list of hosts/networks.
@@ -36,7 +36,7 @@ def parse_args():
   parser = argparse.ArgumentParser(formatter_class=HelpFormatter, description='', usage=custom_usage, add_help=False)
   
   # Positional args.
-  parser.add_argument('configfile', nargs="?", type=str, metavar='<configfile>', default='./configs/internal.ini', help="Input from configuration file (defaults to './configs/internal.ini')")
+  parser.add_argument('configfile', nargs="?", type=str, metavar='<configfile>', default='./configs/masscan.ini', help="Input from configuration file (defaults to './configs/masscan.ini')")
   
   # Optional argument group.
   optional_group = parser.add_argument_group('optional_args')

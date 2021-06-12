@@ -53,7 +53,7 @@ def version_check(mystr, currentver, stablever):
 def create_targetfile(port, targetfilepath):
 	'''
 	Fetch target ipaddresses from db by filtering the port 
-	and write results to a flatfile.
+	then write results to a flatfile.
 	arg(s)port:str, targetfilepath:str '''
 	
 	# DEV - support multiple ports.
@@ -64,6 +64,27 @@ def create_targetfile(port, targetfilepath):
 	with open(targetfilepath, 'w+') as f1:
 		[f1.write(f'{i}\n') for i in results]
 		logging.info(f'Targets written to: {f1.name}')
+
+
+# Write database results to file.
+def write_results(dictionary, directory, dbquery):
+	''' 
+	Write database results to a flatfile. 
+	arg(s)dictionary:dict, directory:str, dbquery:funcobj '''
+
+	for k, v in dictionary.items():
+		filepath = os.path.join(directory, f'{os.path.basename(k)}.txt')
+		results = dbquery(os.path.basename(k))
+		if results != []:
+			logging.info(f'Found results in databse.db:')
+			with open(filepath, 'w+') as f1:
+				[f1.write(f'{result[0]}\n') for result in results]
+				r.console.print(f'Results written to: {f1.name}')
+
+
+def sort_results():
+	''' '''
+	pass
 
 
 def main():
@@ -100,9 +121,10 @@ def main():
 		for key, value in PORTSCANS.items():
 			ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
 			# Masscanner - print cmd to stdout.
-			print(ms.cmd)			
+			print(ms.cmd)		
 			# Masscanner - launch scam.
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
+				count = 0
 				results = ms.run_scan()
 				r.console.print(f'[grey37]{key.upper()}')
 
@@ -111,18 +133,13 @@ def main():
 					db.insert_masscanner(k, v[0], v[1], v[2])
 					# Print masscanner results to stdout.
 					r.console.print(f'{k} {v[0]}')
+					count += 1
+				r.console.print(f'[bold gold3]Instances {count}')
 				print('\n')
 		r.console.print('[bold gold3]All scans have completed!\n')
 
-		# Sqlite - write database results to outputfile.
-		for k, v in PORTSCANS.items():
-			filepath = os.path.join(portscans_dir, f'{k}.txt')
-			results = db.get_ipaddress_by_description(k)
-			if results != []:
-				logging.info(f'Found results in databse.db via description: {k}')
-				with open(filepath, 'w+') as f1:
-					[f1.write(f'{result[0]}\n') for result in results]
-					r.console.print(f'Results written to: {f1.name}')
+		# Sqlite - write db results to file.
+		write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
 
 
 	elif os.path.basename(configfile) == 'metasploit.ini':
@@ -152,6 +169,7 @@ def main():
 			print(metasploit.cmd)
 			r.console.print(f'[grey37]{os.path.basename(k.upper())}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {os.path.basename(k.upper())}') as status:
+				count = 0
 				results = metasploit.run_scan()
 				
 				# Regex - ipv4 pattern
@@ -163,18 +181,13 @@ def main():
 					db.insert_metasploiter(match.group(), os.path.basename(k))
 					# Print metasploiter results to stdout.
 					r.console.print(f'{match.group()}[red] VULNERABLE')
+					count += 1
+				r.console.print(f'[bold gold3]Instances {count}')
 				print('\n')
-			r.console.print('[bold gold3]All scans have completed!\n')
+		r.console.print('[bold gold3]All scans have completed!\n')
 		
-		# Sqlite - write database results to outputfile.
-		for k, v in MSFMODULES.items():
-			filepath = os.path.join(findings_dir, f'{os.path.basename(k)}.txt')
-			results = db.get_ipaddress_by_msfmodule(os.path.basename(k))
-			if results != []:
-				logging.info(f'Found results in databse.db via msfmodule: {os.path.basename(k)}')
-				with open(filepath, 'w+') as f1:
-					[f1.write(f'{result[0]}\n') for result in results]
-					r.console.print(f'Results written to: {f1.name}')
+		# Sqlite - write database results to file.
+		write_results(MSFMODULES, findings_dir, db.get_ipaddress_by_msfmodule)
 
 
 	elif os.path.basename(configfile) == 'nmap.ini':
@@ -187,7 +200,7 @@ def main():
 		#NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
 		NSESCANS = {k: v for k, v in config['nsescans'].items()}
 		# Nmapper - version check.
-		version = version_check('Nmapper', \
+		version = version_check('Nmap', \
 			nmapper.Nmapper.get_version(), nm_stablever)
 		print('\n')
 		
@@ -209,35 +222,29 @@ def main():
 			# Nmapper - launch scam.
 			r.console.print(f'[grey37]{k.upper()}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
+				count = 0
 				nm.run_scan()
 			
 				# XmlParse - instance init, read xmlfile and return results to database.
 				xmlparse = xmlparser.NseParser()
 				xmlresults = xmlparse.run(xmlfile)
-				# DEV - need to omit positive reults from database insert. currently all results are logged.
-				invalidlst = ['Message signing enabled and required', 'required']
-				# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:nsescript, i[1]:nseoutput).
-				[print(i) for i in xmlresults] if i is not [for invalid in invalidlst]
-				exit()
-				db.insert_nmapper(x[0], x[2], x[1]) 
-				exit()
 				# Omit positive results and print to stdout.
 				for i in xmlresults:
-					if i[1] != 'Message signing enabled and required' and i[1] != 'required':
+					if i[1] != None \
+					and i[1] != 'Message signing enabled and required' \
+					and i[1] != 'required':
+						# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:nsescript, i[1]:nseoutput). 
+						db.insert_nmapper(i[0], i[2], i[1])
 						# Print nse-scan results to stdout.
 						r.console.print(f'{i[0]} [red]{i[1].upper()}')
+						count += 1
+				r.console.print(f'[bold gold3]Instances {count}')
 				print('\n')
 		r.console.print('[bold gold3]All scans have completed!\n')
 
-		# Sqlite - write database results to outputfile.
-		for k, v in NSESCANS.items():
-			filepath = os.path.join(findings_dir, f'{k}.txt')
-			results = db.get_ipaddress_by_nsescript(k)
-			if results != []:
-				logging.info(f'Found results in databse.db via nsescript: {k}')
-				with open(filepath, 'w+') as f1:
-					[f1.write(f'{result[0]}\n') for result in results]
-					r.console.print(f'Results written to: {f1.name}')
+		# Sqlite - write db results to file.
+		write_results(NSESCANS, findings_dir, db.get_ipaddress_by_nsescript)
+
 
 
 if __name__ == '__main__':

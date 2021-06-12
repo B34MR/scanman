@@ -10,7 +10,6 @@ from utils import arguments
 import logging
 
 
-
 # Args - init.
 args = arguments.parse_args()
 loglevel = args.loglevel
