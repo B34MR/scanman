@@ -17,7 +17,7 @@ class Metasploiter:
 		self.rport = rport
 		self.rhostfile = rhostfile
 		self.precmd =  f'msfconsole -n -q -x'
-		self.modulecmd =  f"use {self.msfmodule}; set RPORT {self.rport}; set RHOST file:{self.rhostfile}; grep '[+]' run; exit"
+		self.modulecmd =  f"use {self.msfmodule}; set RPORT {self.rport}; set RHOSTS file:{self.rhostfile}; grep '[+]' run; exit"
 		self.cmd = f'{self.precmd} "{self.modulecmd}"'
 
 
