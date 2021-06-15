@@ -67,8 +67,15 @@ class Masscanner:
 		stdout = stdout.split()
 		# Clean '' and '\n' from stdout.
 		stdoutlst = [i for i in stdout if i != '' and i != '\n']
+		# Debug print only.
+		logging.debug(f'STDOUT_LIST:{stdoutlst}')
 		# Parse out port(s) and IP address(es) from stdoutlst.
-		parsed_stdout = {stdoutlst[i+2]: stdoutlst[i].split('/') for i in range(3, len(stdoutlst), 6)}
+		parsed_stdout = []
+		for i in range(3, len(stdoutlst), 6):
+			port = stdoutlst[i].split('/')[0]
+			protocol = stdoutlst[i].split('/')[1]
+			ipaddress = stdoutlst[i+2]
+			parsed_stdout.append((ipaddress, port, protocol, self.description))
 
 		return parsed_stdout
 
@@ -93,10 +100,8 @@ class Masscanner:
 			# Debug print only.
 			logging.info(f'STDOUT:\n{proc.stdout}')
 			logging.debug(f'STDERR:\n{proc.stderr}')
-			# Parse stdout, return dict.
-			results = self.parse_stdout(proc.stdout)
-			# Append description to dict v:lst
-			[results[k].append(self.description) for k in results]
-			logging.debug(f'RESULTS:{results}')
+			# Parse stdout, return list.
+			parsed_results = self.parse_stdout(proc.stdout)
+			logging.debug(f'PARSED_RESULTS:{parsed_results}')
 				
-			return results
+			return parsed_results

@@ -57,7 +57,7 @@ def create_targetfile(port, targetfilepath):
 	arg(s)port:str, targetfilepath:str '''
 	
 	# DEV - support multiple ports.
-	# Sqlite - fetch targets by filtering the nse-scan port (v).
+	# Sqlite - fetch targets by filtering the port.
 	results = [i[0] for i in db.get_ipaddress_by_port(port)]
 	logging.info(f'Found targets in databse.db via port: {port}')
 	# Write targets to temp outputfile (targets are overwritten on each loop).
@@ -80,6 +80,19 @@ def write_results(dictionary, directory, dbquery):
 			with open(filepath, 'w+') as f1:
 				[f1.write(f'{result[0]}\n') for result in results]
 				r.console.print(f'Results written to: {f1.name}')
+
+
+def unique(lst):
+	''' 
+	Return unique values from a list. 
+	arg(s)lst:lst '''
+
+	# Cover list to set and remove duplicates.
+	list_set = set(lst)
+	# convert the set back list
+	unique_list = (list(list_set))
+
+	return unique_list
 
 
 def sort_results():
@@ -120,24 +133,21 @@ def main():
 		# Masscanner - instance int and run scan.
 		for key, value in PORTSCANS.items():
 			ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
-			# Masscanner - print cmd to stdout.
+			# Masscanner - print cmd and launch scan. 
 			print(ms.cmd)		
-			# Masscanner - launch scam.
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 				count = 0
 				results = ms.run_scan()
 				r.console.print(f'[grey37]{key.upper()}')
-
-				# Sqlite - insert results (k:ipaddress, v[0]:port, v[1]:protocol, v[2]:description).
-				for k, v in results.items():
-					db.insert_masscanner(k, v[0], v[1], v[2])
-					# Print masscanner results to stdout.
-					r.console.print(f'{k} {v[0]}')
+				# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
+				for i in results:
+					db.insert_masscanner(i[0], i[1], i[2], i[3])
+					r.console.print(f'{i[0]}:{i[1]}')
 					count += 1
 				r.console.print(f'[bold gold3]Instances {count}')
 				print('\n')
 		r.console.print('[bold gold3]All scans have completed!\n')
-
+		
 		# Sqlite - write db results to file.
 		write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
 
@@ -167,10 +177,10 @@ def main():
 
 			# Metasploiter - print cmd and launch scan. 
 			print(metasploit.cmd)
-			r.console.print(f'[grey37]{os.path.basename(k.upper())}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {os.path.basename(k.upper())}') as status:
 				count = 0
 				results = metasploit.run_scan()
+				r.console.print(f'[grey37]{os.path.basename(k.upper())}')
 				
 				# Regex - ipv4 pattern
 				pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
@@ -217,13 +227,12 @@ def main():
 				# Nmapper - instance init and run scan.
 				nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
 
-			# Nmapper - print cmd to stdout.
+			# Nmapper -print cmd and launch scan. 
 			print(nm.cmd)
-			# Nmapper - launch scam.
-			r.console.print(f'[grey37]{k.upper()}')
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
 				count = 0
 				nm.run_scan()
+				r.console.print(f'[grey37]{k.upper()}')
 			
 				# XmlParse - instance init, read xmlfile and return results to database.
 				xmlparse = xmlparser.NseParser()
