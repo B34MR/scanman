@@ -37,7 +37,6 @@ dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
 
-# Version check.
 def version_check(mystr, currentver, stablever):
 	''' 
 	Returns if app version is supported or not to stdout. 
@@ -49,7 +48,6 @@ def version_check(mystr, currentver, stablever):
 		r.console.print(f'[red][!] Warning[i] using {mystr} {currentver}')
 
 
-# Targetfile creation.
 def create_targetfile(port, targetfilepath):
 	'''
 	Fetch target ipaddresses from db by filtering the port 
@@ -66,7 +64,6 @@ def create_targetfile(port, targetfilepath):
 		logging.info(f'Targets written to: {f1.name}')
 
 
-# Write database results to file.
 def write_results(dictionary, directory, dbquery):
 	''' 
 	Write database results to a flatfile. 
@@ -82,22 +79,19 @@ def write_results(dictionary, directory, dbquery):
 				r.console.print(f'Results written to: {f1.name}')
 
 
-def unique(lst):
+def sort_ipaddress(filepath):
 	''' 
-	Return unique values from a list. 
-	arg(s)lst:lst '''
-
-	# Cover list to set and remove duplicates.
-	list_set = set(lst)
-	# convert the set back list
-	unique_list = (list(list_set))
-
-	return unique_list
-
-
-def sort_results():
-	''' '''
-	pass
+	Sort and unique IP addresses from a file.
+	arg(s)filepath:str '''
+	
+	# Read file and gather IP addresses.
+	with open(filepath, 'r') as f1:
+		ipaddr_lst = [line.strip() for line in f1]
+		ipaddr_set = set(ipaddr_lst)
+	# Write file with sorted and unique ip addresses. 
+	with open(filepath, 'w+') as f2:
+		for ip in sorted(ipaddr_set, key = lambda ip: [int(ip) for ip in ip.split(".")] ):
+			f2.write(f'{ip}\n')
 
 
 def main():
@@ -151,7 +145,6 @@ def main():
 		# Sqlite - write db results to file.
 		write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
 
-
 	elif os.path.basename(configfile) == 'metasploit.ini':
 		# Args - droptable
 		if args.drop:
@@ -199,7 +192,6 @@ def main():
 		# Sqlite - write database results to file.
 		write_results(MSFMODULES, findings_dir, db.get_ipaddress_by_msfmodule)
 
-
 	elif os.path.basename(configfile) == 'nmap.ini':
 		# Args - droptable
 		if args.drop:
@@ -208,13 +200,13 @@ def main():
 		db.create_table_nmapper()
 		# ConfigParser - declare dict values.
 		#NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
-		NSESCANS = {k: v for k, v in config['nsescans'].items()}
+		NSESCRIPTS = {k: v for k, v in config['nsescripts'].items()}
 		# Nmapper - version check.
 		version = version_check('Nmap', \
 			nmapper.Nmapper.get_version(), nm_stablever)
 		print('\n')
 		
-		for k, v in NSESCANS.items():
+		for k, v in NSESCRIPTS.items():
 			# XmlParse - define xml outputfileapth.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
 			
@@ -252,8 +244,11 @@ def main():
 		r.console.print('[bold gold3]All scans have completed!\n')
 
 		# Sqlite - write db results to file.
-		write_results(NSESCANS, findings_dir, db.get_ipaddress_by_nsescript)
-
+		write_results(NSESCRIPTS, findings_dir, db.get_ipaddress_by_nsescript)
+	
+	# Sort / uniquw ip addresses from files in the 'portscan' dir.
+	for file in  os.listdir(portscans_dir):
+		sort_ipaddress(os.path.join(portscans_dir, file))
 
 
 if __name__ == '__main__':
