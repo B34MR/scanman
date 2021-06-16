@@ -16,7 +16,7 @@ import logging
 
 # Stable versions.
 ms_stablever = '1.3.2'
-msf_stablever = '6.0.30'
+msf_stablever = '6.0.48'
 nm_stablever = '7.91'
 
 # Outputfile dirs.
