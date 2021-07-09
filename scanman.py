@@ -214,7 +214,7 @@ def main():
 				# Nmapper - instance init and run scan.
 				nm = nmapper.Nmapper(k, v, args.inputlist, xmlfile)
 			else:
-				# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
+				# Sqlite - fetch targets by nmapper port(v) and write to flatfile.
 				create_targetfile(v, targetfilepath)
 				# Nmapper - instance init and run scan.
 				nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
@@ -246,8 +246,8 @@ def main():
 		# Sqlite - write db results to file.
 		write_results(NSESCRIPTS, findings_dir, db.get_ipaddress_by_nsescript)
 	
-	# Sort / uniquw ip addresses from files in the 'portscan' dir.
-	for file in  os.listdir(portscans_dir):
+	# Sort / unique ip addresses from files in the 'portscan' dir.
+	for file in os.listdir(portscans_dir):
 		sort_ipaddress(os.path.join(portscans_dir, file))
 
 
