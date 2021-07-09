@@ -1,6 +1,7 @@
 # App Specific
 database.db
 outputfiles/
+paused.conf
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
