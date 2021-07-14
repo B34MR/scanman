@@ -16,7 +16,7 @@ import logging
 
 # Stable versions.
 ms_stablever = '1.3.2'
-msf_stablever = '6.0.48'
+msf_stablever = '6.0.52'
 nm_stablever = '7.91'
 
 # Outputfile dirs.
@@ -110,7 +110,7 @@ def main():
 	
 	if os.path.basename(configfile) == 'masscan.ini':
 		# Args - droptable
-		if args.drop:
+		if args.droptable:
 			db.drop_table('Masscanner')
 		# Sqlite - databse init.
 		db.create_table_masscanner()
@@ -147,7 +147,7 @@ def main():
 
 	elif os.path.basename(configfile) == 'metasploit.ini':
 		# Args - droptable
-		if args.drop:
+		if args.droptable:
 			db.drop_table('Metasploiter')
 		# Sqlite - database init.
 		db.create_table_metasploiter()
@@ -194,7 +194,7 @@ def main():
 
 	elif os.path.basename(configfile) == 'nmap.ini':
 		# Args - droptable
-		if args.drop:
+		if args.droptable:
 			db.drop_table('Nmapper')
 		# Sqlite - databse init.
 		db.create_table_nmapper()

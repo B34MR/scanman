@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
 import sqlite3
+from utils import arguments
+
+# Args - verbose/loglevel.
+args = arguments.parse_args()
+if args.database:
+	database_file = args.database
+else:
+	database_file = './database.db'
 
 # Database init.
-conn = sqlite3.connect('../../database.db')
-# Database cursor.
+conn = sqlite3.connect(database_file)
 c = conn.cursor()
 
 
