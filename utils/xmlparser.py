@@ -12,8 +12,7 @@ class NseParser:
 	def parse_xml(self, filepath):
 		'''
 		Parses/read an xml file and return the 'nmaprun' xmlroot. 
-		arg(s):xmlfile:str
-		'''
+		arg(s):xmlfile:str '''
 	
 		xmltree = ET.parse(filepath)
 		#<nmaprun></nmaprun>
@@ -25,8 +24,7 @@ class NseParser:
 	def get_hosts(self):
 		''' 
 		Return all child 'hosts' elements from 'nmaprun' xmlroot.
-		hosts:objlst 
-		'''
+		hosts:objlst '''
 
 		# <nmaprun><host></host>
 		hosts = self.xmlroot.findall('host') 
@@ -37,14 +35,43 @@ class NseParser:
 	def get_addr(self, host):
 		'''
 		Return 'addr' (ipaddress) element from 'address'.
-		arg(s):host:objstr
-		'''
+		arg(s):host:objstr '''
 
 		# <host><address addr=''/>
 		address = host.find('address') 
 		ipaddresss = address.get('addr')
 
 		return ipaddresss
+
+
+	def get_script(self, host):
+		'''
+		Return child elements from 'script'.
+		args(s):host:objstr '''
+
+		# NSE script 'FTP-ANON' used unconventional format, 
+		# which did not include the 'hostscript' root. 
+		try:
+			ports = host.find('ports')
+			port = ports.find('port')
+			script = port.find('script')
+			script_id = script.get('id')
+			script_output = script.get('output')
+			logging.debug(f'XMLPARSER:\n{script_output}')
+			
+			# FTP anonymous access.
+			if script_id == 'ftp-anon':
+				pass
+
+		except AttributeError as e:
+			logging.debug(f'{e}')
+			pass
+		else:
+
+			# elem = script_output
+			result = script_id, script_output
+
+			return result
 
 
 	def get_hostscript(self, host):
@@ -123,13 +150,23 @@ class NseParser:
 		# XmlParser - obtain ipaddress(es) and nsescript scan result(s) from hosts:lst.
 		for host in hosts:
 			ipaddress = self.get_addr(host)
-			result = self.get_hostscript(host)
+			
+			# Results from 'hostscript'.
+			result_hostscript = self.get_hostscript(host)
+			# Results from 'script'.
+			result_script = self.get_script(host)
+			
 			# Exclude hossts with no nsescript scan result(s).
-			if result is not None:
-				i = (ipaddress, result[2], result[0])
+			if result_hostscript is not None:
+				i = (ipaddress, result_hostscript[2], result_hostscript[0])
+				results.append(i)
+
+			if result_script is not None:
+				i = (ipaddress, result_script[1], result_script[0])
 				results.append(i)
 		
 		return results
+
 
 # Tested with Nmap version 7.91.
 

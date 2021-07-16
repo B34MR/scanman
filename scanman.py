@@ -219,7 +219,7 @@ def main():
 				# Nmapper - instance init and run scan.
 				nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
 
-			# Nmapper -print cmd and launch scan. 
+			# Nmapper - print cmd and launch scan. 
 			print(nm.cmd)
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
 				count = 0
