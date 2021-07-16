@@ -17,7 +17,13 @@ import logging
 # Stable versions.
 ms_stablever = '1.3.2'
 msf_stablever = '6.0.52'
-nm_stablever = '7.91'
+nmap_stablever = '7.91'
+
+# Config file dirs.
+# DEV - use masscan_config var.
+masscan_config = './configs/masscan.ini'
+msf_config = './configs/metasploit.ini'
+nmap_config = './configs/nmap.ini'
 
 # Outputfile dirs.
 MAIN_DIR = './outputfiles'
@@ -29,7 +35,8 @@ xml_dir = os.path.join(MAIN_DIR, 'xml')
 targetfilepath = os.path.join(MAIN_DIR, 'targets.txt')
 
 # Banner - main header.
-r.banner('Scanman'.upper())
+# r.banner('Scanman'.upper())
+print('\n')
 
 # Create output dirs.
 directories = [portscans_dir, findings_dir, xml_dir]
@@ -106,9 +113,12 @@ def main():
 	# ConfigParser - read onfigfile.
 	config = ConfigParser(delimiters='=')
 	config.optionxform = str
-	config.read(configfile)
 	
+	# DEV - fix args
+	# Masscanner - enable mode.
 	if os.path.basename(configfile) == 'masscan.ini':
+		# Read config file.
+		config.read(configfile)
 		# Args - droptable
 		if args.droptable:
 			db.drop_table('Masscanner')
@@ -122,7 +132,7 @@ def main():
 		# Masscanner - version check.
 		version = version_check('Masscan', \
 			masscanner.Masscanner.get_version(), ms_stablever)
-		print('\n')
+		r.console.rule(style='grey37')
 
 		# Masscanner - instance int and run scan.
 		for key, value in PORTSCANS.items():
@@ -140,12 +150,16 @@ def main():
 					count += 1
 				r.console.print(f'[bold gold3]Instances {count}')
 				print('\n')
-		r.console.print('[bold gold3]All scans have completed!\n')
+		r.console.print('[bold gold3]All Masscans have completed!')
 		
 		# Sqlite - write db results to file.
 		write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
+		print('\n')
 
-	elif os.path.basename(configfile) == 'metasploit.ini':
+	# Metasploiter - enable mode.
+	if args.msf:
+		# ConfigParser - read config file.
+		config.read(msf_config)
 		# Args - droptable
 		if args.droptable:
 			db.drop_table('Metasploiter')
@@ -156,17 +170,23 @@ def main():
 		# Metasploiter - version check.
 		version = version_check('Metasploit', \
 			metasploiter.Metasploiter.get_version(), msf_stablever)
-		print('\n')
+		r.console.rule(style='grey37')
 		
 		for k, v in MSFMODULES.items():
-			if args.inputlist:
-				# Metasploiter - instance init.
-				metasploit = metasploiter.Metasploiter(k, v, args.inputlist)
-			else:
-				# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
-				create_targetfile(v, targetfilepath)
-				# Metasploiter - instance init.
-				metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
+			# DEV - fix inputlist for msf.
+			# if args.inputlist:
+			# 	# Metasploiter - instance init.
+			# 	metasploit = metasploiter.Metasploiter(k, v, args.inputlist)
+			# else:
+			# 	# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
+			# 	create_targetfile(v, targetfilepath)
+			# 	# Metasploiter - instance init.
+			# 	metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
+
+			# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
+			create_targetfile(v, targetfilepath)
+			# Metasploiter - instance init.
+			metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
 
 			# Metasploiter - print cmd and launch scan. 
 			print(metasploit.cmd)
@@ -187,37 +207,47 @@ def main():
 					count += 1
 				r.console.print(f'[bold gold3]Instances {count}')
 				print('\n')
-		r.console.print('[bold gold3]All scans have completed!\n')
+		r.console.print('[bold gold3]All Metasploit scans have completed!')
 		
 		# Sqlite - write database results to file.
 		write_results(MSFMODULES, findings_dir, db.get_ipaddress_by_msfmodule)
+		print('\n')
 
-	elif os.path.basename(configfile) == 'nmap.ini':
+	# Nmapper - enable mode.
+	if args.nmap:
+		# ConfigParser - read config file.
+		config.read(nmap_config)
 		# Args - droptable
 		if args.droptable:
 			db.drop_table('Nmapper')
 		# Sqlite - databse init.
 		db.create_table_nmapper()
 		# ConfigParser - declare dict values.
+		# Dev - add feature for Nmap interface.
 		#NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
 		NSESCRIPTS = {k: v for k, v in config['nsescripts'].items()}
 		# Nmapper - version check.
 		version = version_check('Nmap', \
-			nmapper.Nmapper.get_version(), nm_stablever)
-		print('\n')
+			nmapper.Nmapper.get_version(), nmap_stablever)
+		r.console.rule(style='grey37')
 		
 		for k, v in NSESCRIPTS.items():
 			# XmlParse - define xml outputfileapth.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
-			
-			if args.inputlist:
-				# Nmapper - instance init and run scan.
-				nm = nmapper.Nmapper(k, v, args.inputlist, xmlfile)
-			else:
-				# Sqlite - fetch targets by nmapper port(v) and write to flatfile.
-				create_targetfile(v, targetfilepath)
-				# Nmapper - instance init and run scan.
-				nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
+			# DEV - fix inputlist for nmap.
+			# if args.inputlist:
+			# 	# Nmapper - instance init and run scan.
+			# 	nm = nmapper.Nmapper(k, v, args.inputlist, xmlfile)
+			# else:
+			# 	# Sqlite - fetch targets by nmapper port(v) and write to flatfile.
+			# 	create_targetfile(v, targetfilepath)
+			# 	# Nmapper - instance init and run scan.
+			# 	nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
+
+			# Sqlite - fetch targets by nmapper port(v) and write to flatfile.
+			create_targetfile(v, targetfilepath)
+			# Nmapper - instance init and run scan.
+			nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
 
 			# Nmapper - print cmd and launch scan. 
 			print(nm.cmd)
@@ -241,10 +271,11 @@ def main():
 						count += 1
 				r.console.print(f'[bold gold3]Instances {count}')
 				print('\n')
-		r.console.print('[bold gold3]All scans have completed!\n')
+		r.console.print('[bold gold3]All Nmap scans have completed!')
 
 		# Sqlite - write db results to file.
 		write_results(NSESCRIPTS, findings_dir, db.get_ipaddress_by_nsescript)
+		print('\n')
 	
 	# Sort / unique ip addresses from files in the 'portscan' dir.
 	for file in os.listdir(portscans_dir):
