@@ -134,6 +134,12 @@ def main():
 			masscanner.Masscanner.get_version(), ms_stablever)
 		r.console.rule(style='grey37')
 
+		# DEV
+		print(f'[*] Reading config file: {masscan_config}')
+		print(f'[*] Masscans loaded:')
+		[print(f'  - {k.upper()}:{v}') for k, v in PORTSCANS.items()]
+		print('\n')
+
 		# Masscanner - instance int and run scan.
 		for key, value in PORTSCANS.items():
 			ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
@@ -172,7 +178,14 @@ def main():
 			metasploiter.Metasploiter.get_version(), msf_stablever)
 		r.console.rule(style='grey37')
 		
+		# DEV
+		print(f'[*] Reading config file: {msf_config}')
+		print(f'[*] Metasploit scans loaded:')
+		[print(f'  - {k}:{v}') for k, v in MSFMODULES.items()]
+		print('\n')
+		
 		for k, v in MSFMODULES.items():
+
 			# DEV - fix inputlist for msf.
 			# if args.inputlist:
 			# 	# Metasploiter - instance init.
@@ -183,32 +196,40 @@ def main():
 			# 	# Metasploiter - instance init.
 			# 	metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
 
-			# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
-			create_targetfile(v, targetfilepath)
-			# Metasploiter - instance init.
-			metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
 
-			# Metasploiter - print cmd and launch scan. 
-			print(metasploit.cmd)
-			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {os.path.basename(k.upper())}') as status:
-				count = 0
-				results = metasploit.run_scan()
-				r.console.print(f'[grey37]{os.path.basename(k.upper())}')
-				
-				# Regex - ipv4 pattern
-				pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
-				# Regex -  find all matches for ipv4 addresses in metasploiter results.
-				all_matches = re.finditer(pattern, results)
-				# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
-				for match in all_matches:
-					db.insert_metasploiter(match.group(), os.path.basename(k))
-					# Print metasploiter results to stdout.
-					r.console.print(f'{match.group()}[red] VULNERABLE')
-					count += 1
-				r.console.print(f'[bold gold3]Instances {count}')
-				print('\n')
-		r.console.print('[bold gold3]All Metasploit scans have completed!')
-		
+			# DEV
+			test = db.get_ipaddress_by_port(v)
+			if not test:
+				print(f'No Targets found for port: {v}.\nSKIPPED: {k}\n')
+			else:
+				# print(f'TARGETS: {test}')
+			
+				# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
+				create_targetfile(v, targetfilepath)
+				# Metasploiter - instance init.
+				metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
+
+				# Metasploiter - print cmd and launch scan. 
+				print(metasploit.cmd)
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {os.path.basename(k.upper())}') as status:
+					count = 0
+					results = metasploit.run_scan()
+					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
+					
+					# Regex - ipv4 pattern
+					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+					# Regex -  find all matches for ipv4 addresses in metasploiter results.
+					all_matches = re.finditer(pattern, results)
+					# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
+					for match in all_matches:
+						db.insert_metasploiter(match.group(), os.path.basename(k))
+						# Print metasploiter results to stdout.
+						r.console.print(f'{match.group()}[red] VULNERABLE')
+						count += 1
+					r.console.print(f'[bold gold3]Instances {count}')
+					print('\n')
+
+		r.console.print('[bold gold3]All Metasploit scans have completed!')	
 		# Sqlite - write database results to file.
 		write_results(MSFMODULES, findings_dir, db.get_ipaddress_by_msfmodule)
 		print('\n')
