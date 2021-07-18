@@ -12,6 +12,7 @@ from configparser import ConfigParser
 import os
 import re
 import logging
+import time
 
 
 # Stable versions.
@@ -55,6 +56,16 @@ def version_check(mystr, currentver, stablever):
 		r.console.print(f'[red][!] Warning[i] using {mystr} {currentver}')
 
 
+def print_config(config, dictionary):
+	'''Print config info '''
+
+	r.console.print(f'Reading config file: {config}')
+	r.console.print(f'Loading scans...')
+	[(time.sleep(.2), r.console.print(f':arrow_right_hook: [grey37]{k.upper()}:[grey58]{v}'))\
+		for k, v in dictionary.items()]
+	r.console.print(f':+1: [gold3]Scans loaded!')
+
+
 def create_targetfile(port, targetfilepath):
 	'''
 	Fetch target ipaddresses from db by filtering the port 
@@ -64,7 +75,6 @@ def create_targetfile(port, targetfilepath):
 	# DEV - support multiple ports.
 	# Sqlite - fetch targets by filtering the port.
 	results = [i[0] for i in db.get_ipaddress_by_port(port)]
-	logging.info(f'Found targets in databse.db via port: {port}')
 	# Write targets to temp outputfile (targets are overwritten on each loop).
 	with open(targetfilepath, 'w+') as f1:
 		[f1.write(f'{i}\n') for i in results]
@@ -133,11 +143,8 @@ def main():
 		version = version_check('Masscan', \
 			masscanner.Masscanner.get_version(), ms_stablever)
 		r.console.rule(style='grey37')
-
-		# DEV
-		print(f'[*] Reading config file: {masscan_config}')
-		print(f'[*] Masscans loaded:')
-		[print(f'  - {k.upper()}:{v}') for k, v in PORTSCANS.items()]
+		# Masscanner - print config information.
+		print_config(masscan_config, PORTSCANS)
 		print('\n')
 
 		# Masscanner - instance int and run scan.
@@ -177,11 +184,8 @@ def main():
 		version = version_check('Metasploit', \
 			metasploiter.Metasploiter.get_version(), msf_stablever)
 		r.console.rule(style='grey37')
-		
-		# DEV
-		print(f'[*] Reading config file: {msf_config}')
-		print(f'[*] Metasploit scans loaded:')
-		[print(f'  - {k}:{v}') for k, v in MSFMODULES.items()]
+		# Metasploiter - print config information.
+		print_config(msf_config, MSFMODULES)
 		print('\n')
 		
 		for k, v in MSFMODULES.items():
@@ -196,14 +200,14 @@ def main():
 			# 	# Metasploiter - instance init.
 			# 	metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
 
-
-			# DEV
-			test = db.get_ipaddress_by_port(v)
-			if not test:
-				print(f'No Targets found for port: {v}.\nSKIPPED: {k}\n')
+			# Skip 'msfmodule scan' if port does not exists in database.
+			targetlst = db.get_ipaddress_by_port(v)
+			if not targetlst:
+				pass
+				r.console.print(f'No Targets found for port: {v}\
+				 \n[grey37]{k.upper()}\n[gold3]Skipped')
+				print('\n')
 			else:
-				# print(f'TARGETS: {test}')
-			
 				# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
 				create_targetfile(v, targetfilepath)
 				# Metasploiter - instance init.
@@ -251,6 +255,9 @@ def main():
 		version = version_check('Nmap', \
 			nmapper.Nmapper.get_version(), nmap_stablever)
 		r.console.rule(style='grey37')
+		# Metasploiter - print config information.
+		print_config(nmap_config, NSESCRIPTS)
+		print('\n')
 		
 		for k, v in NSESCRIPTS.items():
 			# XmlParse - define xml outputfileapth.
@@ -265,35 +272,43 @@ def main():
 			# 	# Nmapper - instance init and run scan.
 			# 	nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
 
-			# Sqlite - fetch targets by nmapper port(v) and write to flatfile.
-			create_targetfile(v, targetfilepath)
-			# Nmapper - instance init and run scan.
-			nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
-
-			# Nmapper - print cmd and launch scan. 
-			print(nm.cmd)
-			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
-				count = 0
-				nm.run_scan()
-				r.console.print(f'[grey37]{k.upper()}')
-			
-				# XmlParse - instance init, read xmlfile and return results to database.
-				xmlparse = xmlparser.NseParser()
-				xmlresults = xmlparse.run(xmlfile)
-				# Omit positive results and print to stdout.
-				for i in xmlresults:
-					if i[1] != None \
-					and i[1] != 'Message signing enabled and required' \
-					and i[1] != 'required':
-						# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:nsescript, i[1]:nseoutput). 
-						db.insert_nmapper(i[0], i[2], i[1])
-						# Print nse-scan results to stdout.
-						r.console.print(f'{i[0]} [red]{i[1].upper()}')
-						count += 1
-				r.console.print(f'[bold gold3]Instances {count}')
+			# Skip 'msfmodule scan' if port does not exists in database.
+			targetlst = db.get_ipaddress_by_port(v)
+			if not targetlst:
+				pass
+				r.console.print(f'No Targets found for port: {v}\
+				 \n[grey37]{k.upper()}\n[gold3]Skipped')
 				print('\n')
-		r.console.print('[bold gold3]All Nmap scans have completed!')
+			else:
+				# Sqlite - fetch targets by nmapper port(v) and write to flatfile.
+				create_targetfile(v, targetfilepath)
+				# Nmapper - instance init and run scan.
+				nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
 
+				# Nmapper - print cmd and launch scan. 
+				print(nm.cmd)
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
+					count = 0
+					nm.run_scan()
+					r.console.print(f'[grey37]{k.upper()}')
+				
+					# XmlParse - instance init, read xmlfile and return results to database.
+					xmlparse = xmlparser.NseParser()
+					xmlresults = xmlparse.run(xmlfile)
+					# Omit positive results and print to stdout.
+					for i in xmlresults:
+						if i[1] != None \
+						and i[1] != 'Message signing enabled and required' \
+						and i[1] != 'required':
+							# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:nsescript, i[1]:nseoutput). 
+							db.insert_nmapper(i[0], i[2], i[1])
+							# Print nse-scan results to stdout.
+							r.console.print(f'{i[0]} [red]{i[1].upper()}')
+							count += 1
+					r.console.print(f'[bold gold3]Instances {count}')
+					print('\n')
+
+		r.console.print('[bold gold3]All Nmap scans have completed!')
 		# Sqlite - write db results to file.
 		write_results(NSESCRIPTS, findings_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
@@ -301,6 +316,9 @@ def main():
 	# Sort / unique ip addresses from files in the 'portscan' dir.
 	for file in os.listdir(portscans_dir):
 		sort_ipaddress(os.path.join(portscans_dir, file))
+	# Sort / unique ip addresses from files in the 'findings' dir.
+	for file in os.listdir(findings_dir):
+		sort_ipaddress(os.path.join(findings_dir, file))
 
 
 if __name__ == '__main__':
