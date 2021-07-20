@@ -219,7 +219,8 @@ def main():
 					count = 0
 					results = metasploit.run_scan()
 					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
-					
+					# Dev - print metasploit raw results
+					# print(f'{results}')
 					# Regex - ipv4 pattern
 					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
 					# Regex -  find all matches for ipv4 addresses in metasploiter results.

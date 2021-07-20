@@ -46,8 +46,8 @@ Usage (C):
   # Primary Options.
   optional_group = parser.add_argument_group('optional_args')
   optional_group.add_argument('-iL', '--inputlist', type=str, required=False, default='', help='Input from list of hosts/networks')
-  optional_group.add_argument('-m', '--msf', dest='msf', action='store_true', help='Metasploit Framework (MSF)')
-  optional_group.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Toggle Nmap Script Engine (NSE) scans.')
+  optional_group.add_argument('-m', '--msf', dest='msf', action='store_true', help='Toggle Metasploit Framework (MSF) scans on/off.')
+  optional_group.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Toggle Nmap Script Engine (NSE) scans on/off.')
   
   # Secondary Options.
   optional_group.add_argument('-d', '--drop', dest='droptable', action='store_true', help='Drops database table')
