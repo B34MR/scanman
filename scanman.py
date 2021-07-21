@@ -205,7 +205,7 @@ def main():
 			if not targetlst:
 				pass
 				r.console.print(f'No Targets found for port: {v}\
-				 \n[grey37]{k.upper()}\n[gold3]Skipped')
+				 \n[grey37]{os.path.basename(k.upper())}\n[gold3]Skipped')
 				print('\n')
 			else:
 				# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
@@ -219,20 +219,24 @@ def main():
 					count = 0
 					results = metasploit.run_scan()
 					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
-					# Dev - print metasploit raw results
-					# print(f'{results}')
-					# Regex - ipv4 pattern
-					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
-					# Regex -  find all matches for ipv4 addresses in metasploiter results.
-					all_matches = re.finditer(pattern, results)
-					# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
-					for match in all_matches:
-						db.insert_metasploiter(match.group(), os.path.basename(k))
-						# Print metasploiter results to stdout.
-						r.console.print(f'{match.group()}[red] VULNERABLE')
-						count += 1
-					r.console.print(f'[bold gold3]Instances {count}')
-					print('\n')
+					# Dev - attempt to address edge cases.
+					# Edge case - NSFMOUNT.
+					if os.path.basename(k.upper()) == 'NFSMOUNT':
+						# Dev - print metasploit raw results
+						print(f'{results}')
+					else:
+						# Regex - ipv4 pattern
+						pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+						# Regex -  find all matches for ipv4 addresses in metasploiter results.
+						all_matches = re.finditer(pattern, results)
+						# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
+						for match in all_matches:
+							db.insert_metasploiter(match.group(), os.path.basename(k))
+							# Print metasploiter results to stdout.
+							r.console.print(f'{match.group()}[red] VULNERABLE')
+							count += 1
+						r.console.print(f'[bold gold3]Instances {count}')
+						print('\n')
 
 		r.console.print('[bold gold3]All Metasploit scans have completed!')	
 		# Sqlite - write database results to file.
