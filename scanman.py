@@ -16,7 +16,7 @@ import time
 
 
 # Stable versions.
-ms_stablever = '1.3.2'
+mass_stablever = '1.3.2'
 msf_stablever = '6.0.52'
 nmap_stablever = '7.91'
 
@@ -50,10 +50,11 @@ def version_check(mystr, currentver, stablever):
 	Returns if app version is supported or not to stdout. 
 	arg(s):mystr:str, currentver:str, stablever:str '''
 
+	r.console.print(f'Checking version:[grey37] v{currentver}')
 	if currentver == stablever:
-		r.console.print(f'[i grey37]{mystr} {currentver}')
+		r.console.print(f':arrow_right_hook: [grey37]v{currentver} is supported.')
 	else:
-		r.console.print(f'[red][!] Warning[i] using {mystr} {currentver}')
+		r.console.print(f':arrow_right_hook: [orange_red1]Warning [grey53]v{currentver} is unsupported.')
 
 
 def print_config(config, dictionary):
@@ -125,7 +126,7 @@ def main():
 	config.optionxform = str
 	
 	# DEV - fix args
-	# Masscanner - enable mode.
+	# Masscanner - mode.
 	if os.path.basename(configfile) == 'masscan.ini':
 		# Read config file.
 		config.read(configfile)
@@ -139,10 +140,12 @@ def main():
 		PORTSCANS = {k: v for k, v in config['portscans'].items()}
 		interface = MSCONFIG['interface']
 		rate = MSCONFIG['rate']
-		# Masscanner - version check.
-		version = version_check('Masscan', \
-			masscanner.Masscanner.get_version(), ms_stablever)
+		# Heading1
+		mass_ver = masscanner.Masscanner.get_version()
+		r.console.print(f'[i grey37]Masscan {mass_ver}')
 		r.console.rule(style='grey37')
+		# Masscanner - version check.
+		version = version_check('Masscan', mass_ver, mass_stablever)
 		# Masscanner - print config information.
 		print_config(masscan_config, PORTSCANS)
 		print('\n')
@@ -169,7 +172,7 @@ def main():
 		write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
 		print('\n')
 
-	# Metasploiter - enable mode.
+	# Metasploiter - mode.
 	if args.msf:
 		# ConfigParser - read config file.
 		config.read(msf_config)
@@ -180,10 +183,12 @@ def main():
 		db.create_table_metasploiter()
 		# ConfigParser - declare dict values.
 		MSFMODULES = {k: v for k, v in config['msfmodules'].items()}
-		# Metasploiter - version check.
-		version = version_check('Metasploit', \
-			metasploiter.Metasploiter.get_version(), msf_stablever)
+		# Heading1
+		msf_ver = metasploiter.Metasploiter.get_version()
+		r.console.print(f'[i grey37]Metasploit {msf_ver}')
 		r.console.rule(style='grey37')
+		# Metasploiter - version check.
+		version = version_check('Metasploit', msf_ver, msf_stablever)
 		# Metasploiter - print config information.
 		print_config(msf_config, MSFMODULES)
 		print('\n')
@@ -219,31 +224,27 @@ def main():
 					count = 0
 					results = metasploit.run_scan()
 					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
-					# Dev - attempt to address edge cases.
-					# Edge case - NSFMOUNT.
-					if os.path.basename(k.upper()) == 'NFSMOUNT':
-						# Dev - print metasploit raw results
-						print(f'{results}')
-					else:
-						# Regex - ipv4 pattern
-						pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
-						# Regex -  find all matches for ipv4 addresses in metasploiter results.
-						all_matches = re.finditer(pattern, results)
-						# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
-						for match in all_matches:
-							db.insert_metasploiter(match.group(), os.path.basename(k))
-							# Print metasploiter results to stdout.
-							r.console.print(f'{match.group()}[red] VULNERABLE')
-							count += 1
-						r.console.print(f'[bold gold3]Instances {count}')
-						print('\n')
+					# Dev - print metasploit raw results
+					# print(f'{results}')
+					# Regex - ipv4 pattern
+					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+					# Regex -  find all matches for ipv4 addresses in metasploiter results.
+					all_matches = re.finditer(pattern, results)
+					# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
+					for match in all_matches:
+						db.insert_metasploiter(match.group(), os.path.basename(k))
+						# Print metasploiter results to stdout.
+						r.console.print(f'{match.group()}[red] VULNERABLE')
+						count += 1
+					r.console.print(f'[bold gold3]Instances {count}')
+					print('\n')
 
 		r.console.print('[bold gold3]All Metasploit scans have completed!')	
 		# Sqlite - write database results to file.
 		write_results(MSFMODULES, findings_dir, db.get_ipaddress_by_msfmodule)
 		print('\n')
 
-	# Nmapper - enable mode.
+	# Nmapper - mode.
 	if args.nmap:
 		# ConfigParser - read config file.
 		config.read(nmap_config)
@@ -256,11 +257,13 @@ def main():
 		# Dev - add feature for Nmap interface.
 		#NMCONFIG = {k: v for k, v in config['nmapconfig'].items()}
 		NSESCRIPTS = {k: v for k, v in config['nsescripts'].items()}
-		# Nmapper - version check.
-		version = version_check('Nmap', \
-			nmapper.Nmapper.get_version(), nmap_stablever)
+		# Heading1
+		nmap_ver = nmapper.Nmapper.get_version()
+		r.console.print(f'[i grey37]Nmap {nmap_ver}')
 		r.console.rule(style='grey37')
-		# Metasploiter - print config information.
+		# Nmapper - version check.
+		version = version_check('Nmap', nmap_ver, nmap_stablever)
+		# Nmapper - print config information.
 		print_config(nmap_config, NSESCRIPTS)
 		print('\n')
 		
