@@ -27,20 +27,21 @@ msf_config = './configs/metasploit.ini'
 nmap_config = './configs/nmap.ini'
 
 # Outputfile dirs.
-MAIN_DIR = './outputfiles'
-findings_dir = os.path.join(MAIN_DIR, 'findings')
+MAIN_DIR = './results'
+TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
+vulnscan_dir = os.path.join(MAIN_DIR, 'vulnscans')
 portscans_dir = os.path.join(MAIN_DIR, 'portscans')
-xml_dir = os.path.join(MAIN_DIR, 'xml')
+xml_dir = os.path.join(TMP_DIR, 'xml')
 
 # Nmap / Metasploit temp target/inputlist filepath.
-targetfilepath = os.path.join(MAIN_DIR, 'targets.txt')
+targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 
 # Banner - main header.
 # r.banner('Scanman'.upper())
 print('\n')
 
 # Create output dirs.
-directories = [portscans_dir, findings_dir, xml_dir]
+directories = [portscans_dir, vulnscan_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -241,7 +242,7 @@ def main():
 
 		r.console.print('[bold gold3]All Metasploit scans have completed!')	
 		# Sqlite - write database results to file.
-		write_results(MSFMODULES, findings_dir, db.get_ipaddress_by_msfmodule)
+		write_results(MSFMODULES, vulnscan_dir, db.get_ipaddress_by_msfmodule)
 		print('\n')
 
 	# Nmapper - mode.
@@ -318,15 +319,15 @@ def main():
 
 		r.console.print('[bold gold3]All Nmap scans have completed!')
 		# Sqlite - write db results to file.
-		write_results(NSESCRIPTS, findings_dir, db.get_ipaddress_by_nsescript)
+		write_results(NSESCRIPTS, vulnscan_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
 	
 	# Sort / unique ip addresses from files in the 'portscan' dir.
 	for file in os.listdir(portscans_dir):
 		sort_ipaddress(os.path.join(portscans_dir, file))
-	# Sort / unique ip addresses from files in the 'findings' dir.
-	for file in os.listdir(findings_dir):
-		sort_ipaddress(os.path.join(findings_dir, file))
+	# Sort / unique ip addresses from files in the 'vulnscans' dir.
+	for file in os.listdir(vulnscan_dir):
+		sort_ipaddress(os.path.join(vulnscan_dir, file))
 
 
 if __name__ == '__main__':
