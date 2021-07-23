@@ -21,7 +21,6 @@ msf_stablever = '6.0.52'
 nmap_stablever = '7.91'
 
 # Config file dirs.
-# DEV - use masscan_config var.
 masscan_config = './configs/masscan.ini'
 msf_config = './configs/metasploit.ini'
 nmap_config = './configs/nmap.ini'
@@ -36,8 +35,7 @@ xml_dir = os.path.join(TMP_DIR, 'xml')
 # Nmap / Metasploit temp target/inputlist filepath.
 targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 
-# Banner - main header.
-# r.banner('Scanman'.upper())
+# Print - aesthetic newline.
 print('\n')
 
 # Create output dirs.
@@ -118,62 +116,57 @@ def main():
 
 	# Args - init.
 	args = arguments.parse_args()
-	# Args - configfile.
-	configfile = args.configfile
 	# Args - inputlist
 	ms_targetfile = args.inputlist
 	# ConfigParser - read onfigfile.
 	config = ConfigParser(delimiters='=')
 	config.optionxform = str
 	
-	# DEV - fix args
-	# Masscanner - mode.
-	if os.path.basename(configfile) == 'masscan.ini':
-		# Read config file.
-		config.read(configfile)
-		# Args - droptable
-		if args.droptable:
-			db.drop_table('Masscanner')
-		# Sqlite - databse init.
-		db.create_table_masscanner()
-		# ConfigParser - declare dict values.
-		MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
-		PORTSCANS = {k: v for k, v in config['portscans'].items()}
-		interface = MSCONFIG['interface']
-		rate = MSCONFIG['rate']
-		# Heading1
-		mass_ver = masscanner.Masscanner.get_version()
-		r.console.print(f'[i grey37]Masscan {mass_ver}')
-		r.console.rule(style='grey37')
-		# Masscanner - version check.
-		version = version_check('Masscan', mass_ver, mass_stablever)
-		# Masscanner - print config information.
-		print_config(masscan_config, PORTSCANS)
-		print('\n')
+	# Masscanner - default mode.
+	config.read(masscan_config)
+	# Args - droptable
+	if args.droptable:
+		db.drop_table('Masscanner')
+	# Sqlite - databse init.
+	db.create_table_masscanner()
+	# ConfigParser - declare dict values.
+	MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
+	PORTSCANS = {k: v for k, v in config['portscans'].items()}
+	interface = MSCONFIG['interface']
+	rate = MSCONFIG['rate']
+	# Heading1
+	mass_ver = masscanner.Masscanner.get_version()
+	r.console.print(f'[i grey37]Masscan {mass_ver}')
+	r.console.rule(style='grey37')
+	# Masscanner - version check.
+	version = version_check('Masscan', mass_ver, mass_stablever)
+	# Masscanner - print config information.
+	print_config(masscan_config, PORTSCANS)
+	print('\n')
 
-		# Masscanner - instance int and run scan.
-		for key, value in PORTSCANS.items():
-			ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
-			# Masscanner - print cmd and launch scan. 
-			print(ms.cmd)		
-			with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
-				count = 0
-				results = ms.run_scan()
-				r.console.print(f'[grey37]{key.upper()}')
-				# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
-				for i in results:
-					db.insert_masscanner(i[0], i[1], i[2], i[3])
-					r.console.print(f'{i[0]}:{i[1]}')
-					count += 1
-				r.console.print(f'[bold gold3]Instances {count}')
-				print('\n')
-		r.console.print('[bold gold3]All Masscans have completed!')
+	# Masscanner - instance int and run scan.
+	for key, value in PORTSCANS.items():
+		ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
+		# Masscanner - print cmd and launch scan. 
+		print(ms.cmd)		
+		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
+			count = 0
+			results = ms.run_scan()
+			r.console.print(f'[grey37]{key.upper()}')
+			# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
+			for i in results:
+				db.insert_masscanner(i[0], i[1], i[2], i[3])
+				r.console.print(f'{i[0]}:{i[1]}')
+				count += 1
+			r.console.print(f'[bold gold3]Instances {count}')
+			print('\n')
+	r.console.print('[bold gold3]All Masscans have completed!')
 		
-		# Sqlite - write db results to file.
-		write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
-		print('\n')
+	# Sqlite - write db results to file.
+	write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
+	print('\n')
 
-	# Metasploiter - mode.
+	# Metasploiter - optional mode.
 	if args.msf:
 		# ConfigParser - read config file.
 		config.read(msf_config)
@@ -195,17 +188,6 @@ def main():
 		print('\n')
 		
 		for k, v in MSFMODULES.items():
-
-			# DEV - fix inputlist for msf.
-			# if args.inputlist:
-			# 	# Metasploiter - instance init.
-			# 	metasploit = metasploiter.Metasploiter(k, v, args.inputlist)
-			# else:
-			# 	# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
-			# 	create_targetfile(v, targetfilepath)
-			# 	# Metasploiter - instance init.
-			# 	metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
-
 			# Skip 'msfmodule scan' if port does not exists in database.
 			targetlst = db.get_ipaddress_by_port(v)
 			if not targetlst:
@@ -225,7 +207,7 @@ def main():
 					count = 0
 					results = metasploit.run_scan()
 					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
-					# Dev - print metasploit raw results
+					# Debug - print metasploit raw results
 					# print(f'{results}')
 					# Regex - ipv4 pattern
 					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
@@ -245,7 +227,7 @@ def main():
 		write_results(MSFMODULES, vulnscan_dir, db.get_ipaddress_by_msfmodule)
 		print('\n')
 
-	# Nmapper - mode.
+	# Nmapper - optional mode.
 	if args.nmap:
 		# ConfigParser - read config file.
 		config.read(nmap_config)
@@ -271,16 +253,6 @@ def main():
 		for k, v in NSESCRIPTS.items():
 			# XmlParse - define xml outputfileapth.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
-			# DEV - fix inputlist for nmap.
-			# if args.inputlist:
-			# 	# Nmapper - instance init and run scan.
-			# 	nm = nmapper.Nmapper(k, v, args.inputlist, xmlfile)
-			# else:
-			# 	# Sqlite - fetch targets by nmapper port(v) and write to flatfile.
-			# 	create_targetfile(v, targetfilepath)
-			# 	# Nmapper - instance init and run scan.
-			# 	nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
-
 			# Skip 'msfmodule scan' if port does not exists in database.
 			targetlst = db.get_ipaddress_by_port(v)
 			if not targetlst:
