@@ -114,10 +114,41 @@ def sort_ipaddress(filepath):
 def main():
 	''' Main Func '''
 
-	# Args - init.
-	args = arguments.parse_args()
-	# Args - inputlist
-	ms_targetfile = args.inputlist
+	# Args - init and parse.
+	args = arguments.parser.parse_args()
+
+	# DEV - move out of main.
+	def group_kwargs(group_title):
+		'''Return argparse arguments by group name/title. '''
+
+		for group in arguments.parser._action_groups:
+		  if group.title == group_title:
+		    group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+		    kwargs = vars(arguments.argparse.Namespace(**group_dict))
+		    logging.info(f'\n{group.title.upper()}:\n{kwargs}')
+
+		    return kwargs
+
+	# Args - parse kwargs by group title.
+	group1_title = 'Masscan Arguments'
+	group2_title = 'Scanman Arguments'
+	# Args - Return argparse arguments by group name/title.
+	kwargs = group_kwargs(group1_title)
+	
+	# DEV.
+	# Args - check if None.
+	def isarg(dictionary, argument):
+		''' '''
+		if dictionary[argument] is None:
+			try:
+			  	x = dictionary.pop(argument, None)
+			  	print(x)
+			except Exception as e:
+				raise e
+	# DEV.
+	isarg(kwargs, '--excludefile')
+	exit()
+
 	# ConfigParser - read onfigfile.
 	config = ConfigParser(delimiters='=')
 	config.optionxform = str
@@ -130,10 +161,8 @@ def main():
 	# Sqlite - databse init.
 	db.create_table_masscanner()
 	# ConfigParser - declare dict values.
-	MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
 	PORTSCANS = {k: v for k, v in config['portscans'].items()}
-	interface = MSCONFIG['interface']
-	rate = MSCONFIG['rate']
+	
 	# Heading1
 	mass_ver = masscanner.Masscanner.get_version()
 	r.console.print(f'[i grey37]Masscan {mass_ver}')
@@ -146,9 +175,9 @@ def main():
 
 	# Masscanner - instance int and run scan.
 	for key, value in PORTSCANS.items():
-		ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
+		ms = masscanner.Masscanner(key, value, **kwargs)
 		# Masscanner - print cmd and launch scan. 
-		print(ms.cmd)		
+		print(ms.cmd)
 		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 			count = 0
 			results = ms.run_scan()

@@ -11,7 +11,7 @@ import logging
 
 
 # Args - init.
-args = arguments.parse_args()
+args = arguments.parser.parse_args()
 loglevel = args.loglevel
 
 # Rich console and theme init.

@@ -10,17 +10,18 @@ class Masscanner:
 	# Masscan version cmd.
 	version_cmd = 'masscan --version'
 
-	def __init__(self, interface, rate, description, ports, inputlist):
-		''' Init arg(s)interface:str, rate:str, description:str, ports:lst/str, inputlist:str '''
-		self.interface = interface
-		self.rate = rate
+	# DEV
+	def __init__(self, description, ports, **kwargs):
+		''' 
+		Init arg(s)description:str, ports:lst/str'''
+		
 		self.description = description
 		self.ports = self.scrub_ports(ports)
-		self.inputlist = inputlist
+		self.kwargs = ' '.join([f'{k} {v}' for k, v in kwargs.items()])
 		self.cmd = \
-		f'masscan --interface {self.interface} --rate {self.rate} -iL {self.inputlist} -p {self.ports}'
+		f'masscan -p {self.ports} {self.kwargs}'
 
-	
+
 	@classmethod
 	def get_version(cls):
 		''' Return Masscan version:str'''
