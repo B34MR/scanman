@@ -29,6 +29,8 @@ nmap_config = './configs/nmap.ini'
 MAIN_DIR = './results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
 vulnscan_dir = os.path.join(MAIN_DIR, 'vulnscans')
+# DEV - STDOUT dir.
+stdout_dir = os.path.join(MAIN_DIR, 'stdout')
 portscans_dir = os.path.join(MAIN_DIR, 'portscans')
 xml_dir = os.path.join(TMP_DIR, 'xml')
 
@@ -38,8 +40,9 @@ targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 # Print - aesthetic newline.
 print('\n')
 
+# DEV - added STDOUT dir.
 # Create output dirs.
-directories = [portscans_dir, vulnscan_dir, xml_dir]
+directories = [portscans_dir, stdout_dir, vulnscan_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -111,6 +114,18 @@ def create_targetfile(port, targetfilepath):
 		[f1.write(f'{i}\n') for i in results]
 		logging.info(f'Targets written to: {f1.name}')
 
+# DEV
+def remove_ansi(string):
+	'''
+	Remove ANSI escape sequences from a string.
+	arg(s):string:str'''
+	
+	reaesc = re.compile(r'\x1b[^m]*m')
+	new_string = reaesc.sub('', string)
+	
+	return new_string
+
+
 
 def write_results(dictionary, directory, dbquery):
 	''' 
@@ -148,9 +163,9 @@ def main():
 	# Argparse - group titles.
 	group1_title = 'Masscan Arguments'
 	group2_title = 'Scanman Arguments'
-	# Return arguments:dict for a specific "Argparse Group"
+	# Argparse - return args for a specific "Argparse Group".
 	kwargs = group_kwargs(group1_title)	
-	# DEV.
+	# Argparse - remove 'excludefile' k,v is value is None.
 	remove_key(kwargs, '--excludefile')
 
 	# ConfigParser - read onfigfile.
@@ -242,6 +257,20 @@ def main():
 					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
 					# Debug - print metasploit raw results
 					# print(f'{results}')
+
+					# DEV - save STDOUT to a file.
+					results_noansi = remove_ansi(results)
+					# DEV - replace/remove msf RPORT header.
+					results_norport = results_noansi.replace(f'RPORT => {v}', '')
+					# DEV - replace/remove msf RHOST header.
+					results_norhost = results_norport.replace(f'RHOSTS => file:{targetfilepath}', '')
+					# DEV - replace/remove newline.
+					results_cleaned = results_norhost.replace(f'\n', '')
+
+					r.console.print(f'[red]{results_cleaned}')
+					with open(f'{stdout_dir}/{os.path.basename(k)}.txt', 'a+') as f1:
+						f1.write(f'{results_cleaned}\n')
+
 					# Regex - ipv4 pattern
 					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
 					# Regex -  find all matches for ipv4 addresses in metasploiter results.
@@ -249,8 +278,9 @@ def main():
 					# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
 					for match in all_matches:
 						db.insert_metasploiter(match.group(), os.path.basename(k))
+						# DEV - commented out.
 						# Print metasploiter results to stdout.
-						r.console.print(f'{match.group()}[red] VULNERABLE')
+						# r.console.print(f'{match.group()}[red] VULNERABLE')
 						count += 1
 					r.console.print(f'[bold gold3]Instances {count}')
 					print('\n')
@@ -311,6 +341,12 @@ def main():
 					xmlresults = xmlparse.run(xmlfile)
 					# Omit positive results and print to stdout.
 					for i in xmlresults:
+						
+						# DEV - save STDOUT to a file.
+						with open(f'{stdout_dir}/{k}.txt', 'a+') as f1:
+							f1.write(f'{i[0]} {i[1].upper()}\n')
+						
+						# Omit positive results and print to stdout.
 						if i[1] != None \
 						and i[1] != 'Message signing enabled and required' \
 						and i[1] != 'required':
@@ -319,6 +355,11 @@ def main():
 							# Print nse-scan results to stdout.
 							r.console.print(f'{i[0]} [red]{i[1].upper()}')
 							count += 1
+
+							# # DEV - save STDOUT to a file.
+							# with open(f'{stdout_dir}/{k}.txt', 'a+') as f1:
+							# 	f1.write(f'{i[0]} {i[1].upper()}\n')
+
 					r.console.print(f'[bold gold3]Instances {count}')
 					print('\n')
 
