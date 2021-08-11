@@ -28,10 +28,9 @@ nmap_config = './configs/nmap.ini'
 # Outputfile dirs.
 MAIN_DIR = './results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
-vulnscan_dir = os.path.join(MAIN_DIR, 'vulnscans')
-# DEV - STDOUT dir.
-stdout_dir = os.path.join(MAIN_DIR, 'stdout')
-portscans_dir = os.path.join(MAIN_DIR, 'portscans')
+masscan_dir = os.path.join(MAIN_DIR, 'masscan')
+metasploit_dir = os.path.join(MAIN_DIR, 'metasploit')
+nmap_dir = os.path.join(MAIN_DIR, 'nmap')
 xml_dir = os.path.join(TMP_DIR, 'xml')
 
 # Nmap / Metasploit temp target/inputlist filepath.
@@ -42,7 +41,7 @@ print('\n')
 
 # DEV - added STDOUT dir.
 # Create output dirs.
-directories = [portscans_dir, stdout_dir, vulnscan_dir, xml_dir]
+directories = [masscan_dir, metasploit_dir, nmap_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -133,7 +132,7 @@ def write_results(dictionary, directory, dbquery):
 	arg(s)dictionary:dict, directory:str, dbquery:funcobj '''
 
 	for k, v in dictionary.items():
-		filepath = os.path.join(directory, f'{os.path.basename(k)}.txt')
+		filepath = os.path.join(directory, f'{os.path.basename(k)}.ip')
 		results = dbquery(os.path.basename(k))
 		if results != []:
 			logging.info(f'Found results in databse.db:')
@@ -211,7 +210,7 @@ def main():
 	r.console.print('[bold gold3]All Masscans have completed!')
 		
 	# Sqlite - write db results to file.
-	write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
+	write_results(PORTSCANS, masscan_dir, db.get_ipaddress_by_description)
 	print('\n')
 
 	# Metasploiter - optional mode.
@@ -265,10 +264,12 @@ def main():
 					# DEV - replace/remove msf RHOST header.
 					results_norhost = results_norport.replace(f'RHOSTS => file:{targetfilepath}', '')
 					# DEV - replace/remove newline.
-					results_cleaned = results_norhost.replace(f'\n', '')
-
+					results_cleaned = results_norhost.replace(f'\n', '', 2)
+					# Print - cleaned results to stdout.
 					r.console.print(f'[red]{results_cleaned}')
-					with open(f'{stdout_dir}/{os.path.basename(k)}.txt', 'a+') as f1:
+
+					# Dev - write stdout to a file.
+					with open(f'{metasploit_dir}/{os.path.basename(k)}.stdout', 'a+') as f1:
 						f1.write(f'{results_cleaned}\n')
 
 					# Regex - ipv4 pattern
@@ -287,7 +288,7 @@ def main():
 
 		r.console.print('[bold gold3]All Metasploit scans have completed!')	
 		# Sqlite - write database results to file.
-		write_results(MSFMODULES, vulnscan_dir, db.get_ipaddress_by_msfmodule)
+		write_results(MSFMODULES, metasploit_dir, db.get_ipaddress_by_msfmodule)
 		print('\n')
 
 	# Nmapper - optional mode.
@@ -343,7 +344,7 @@ def main():
 					for i in xmlresults:
 						
 						# DEV - save STDOUT to a file.
-						with open(f'{stdout_dir}/{k}.txt', 'a+') as f1:
+						with open(f'{nmap_dir}/{k}.stdout', 'a+') as f1:
 							f1.write(f'{i[0]} {i[1].upper()}\n')
 						
 						# Omit positive results and print to stdout.
@@ -356,24 +357,25 @@ def main():
 							r.console.print(f'{i[0]} [red]{i[1].upper()}')
 							count += 1
 
-							# # DEV - save STDOUT to a file.
-							# with open(f'{stdout_dir}/{k}.txt', 'a+') as f1:
-							# 	f1.write(f'{i[0]} {i[1].upper()}\n')
-
 					r.console.print(f'[bold gold3]Instances {count}')
 					print('\n')
 
 		r.console.print('[bold gold3]All Nmap scans have completed!')
 		# Sqlite - write db results to file.
-		write_results(NSESCRIPTS, vulnscan_dir, db.get_ipaddress_by_nsescript)
+		write_results(NSESCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
 	
-	# Sort / unique ip addresses from files in the 'portscan' dir.
-	for file in os.listdir(portscans_dir):
-		sort_ipaddress(os.path.join(portscans_dir, file))
-	# Sort / unique ip addresses from files in the 'vulnscans' dir.
-	for file in os.listdir(vulnscan_dir):
-		sort_ipaddress(os.path.join(vulnscan_dir, file))
+	# DEV - broken, since .stdout was added to code.
+	# Sort / unique ip addresses from files in the 'masscan' dir.
+	
+	# for file in os.listdir(masscan_dir):
+	# 	sort_ipaddress(os.path.join(masscan_dir, file))
+	# # Sort / unique ip addresses from files in the 'metasploit' dir.
+	# for file in os.listdir(metasploit_dir):
+	# 	sort_ipaddress(os.path.join(metasploit_dir, file))
+	# # Sort / unique ip addresses from files in the 'nmap' dir.
+	# for file in os.listdir(nmap_dir):
+	# 	sort_ipaddress(os.path.join(nmap_dir, file))
 
 
 if __name__ == '__main__':
