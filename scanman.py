@@ -43,6 +43,37 @@ directories = [portscans_dir, vulnscan_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
+# Argparse - init and parse.
+args = arguments.parser.parse_args()
+
+
+def group_kwargs(group_title):
+	'''
+	Return arguments:dict for a specific "Argparse Group". 
+	arg(s) group_title:str '''
+
+	for group in arguments.parser._action_groups:
+	  if group.title == group_title:
+	    group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+	    kwargs = vars(arguments.argparse.Namespace(**group_dict))
+	    logging.info(f'\n{group.title.upper()}:\n{kwargs}')
+
+	    return kwargs
+
+
+def remove_key(dictionary, key):
+	'''
+	Remove dictionary key if value is None.
+	arg(s) dictionary:dict, key:str '''
+
+	if dictionary[key] is None:
+		try:
+		  	value = dictionary.pop(key, None)
+		except Exception as e:
+			raise e
+		else:
+			logging.info(f'REMOVED ARGUMENT: "{key}: {value}"')
+
 
 def version_check(mystr, currentver, stablever):
 	''' 
@@ -114,40 +145,13 @@ def sort_ipaddress(filepath):
 def main():
 	''' Main Func '''
 
-	# Args - init and parse.
-	args = arguments.parser.parse_args()
-
-	# DEV - move out of main.
-	def group_kwargs(group_title):
-		'''Return argparse arguments by group name/title. '''
-
-		for group in arguments.parser._action_groups:
-		  if group.title == group_title:
-		    group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
-		    kwargs = vars(arguments.argparse.Namespace(**group_dict))
-		    logging.info(f'\n{group.title.upper()}:\n{kwargs}')
-
-		    return kwargs
-
-	# Args - parse kwargs by group title.
+	# Argparse - group titles.
 	group1_title = 'Masscan Arguments'
 	group2_title = 'Scanman Arguments'
-	# Args - Return argparse arguments by group name/title.
-	kwargs = group_kwargs(group1_title)
-	
+	# Return arguments:dict for a specific "Argparse Group"
+	kwargs = group_kwargs(group1_title)	
 	# DEV.
-	# Args - check if None.
-	def isarg(dictionary, argument):
-		''' '''
-		if dictionary[argument] is None:
-			try:
-			  	x = dictionary.pop(argument, None)
-			  	print(x)
-			except Exception as e:
-				raise e
-	# DEV.
-	isarg(kwargs, '--excludefile')
-	exit()
+	remove_key(kwargs, '--excludefile')
 
 	# ConfigParser - read onfigfile.
 	config = ConfigParser(delimiters='=')

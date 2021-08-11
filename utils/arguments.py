@@ -20,14 +20,13 @@ Scanman
 --------------------------------------------------\n
 Usage: 
   python3 scanman.py -iL /path/to/targetfile.txt
-  python3 scanman.py -iL /path/to/targetfile.txt -eL /path/to/excludefile.txt
   python3 scanman.py -iL /path/to/targetfile.txt --msf
   python3 scanman.py -iL /path/to/targetfile.txt --nmap
-  python3 scanman.py -iL /path/to/targetfile.txt --msf --nmap
+  python3 scanman.py -iL /path/to/targetfile.txt --excludefile /path/to/excludefile.txt
   python3 scanman.py -iL /path/to/targetfile.txt --drop
   python3 scanman.py -iL /path/to/targetfile.txt --database /path/to/database.db
 
-Common Usage:
+Commonly used Example:
   python3 scanman.py -iL /path/to/targetfile.txt -m -n -d
   
 """
@@ -48,11 +47,12 @@ group2.add_argument('-m', '--msf', dest='msf', action='store_true', help='Toggle
 group2.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Toggle Nmap Script Engine (NSE) scans on/off.')
 group2.add_argument('-d', '--drop', dest='droptable', action='store_true', help='Drop existing database tables.')
 group2.add_argument('--database', dest='database', default='.database.db', metavar='DATABASE' ,help='Filepath for database file.')
-group2.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['DEBUG', 'INFO'], help='Configure logging level')
+group2.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['DEBUG', 'INFO', 'WARNING'], help='Set logging level')
   
-# DEV - help is broken.
 # Print 'help' if no options are defined.
-if len(sys.argv) == 1:
+if len(sys.argv) == 1 \
+or sys.argv[1] == '-h' \
+or sys.argv[1] == '--help':
   parser.print_help(sys.stderr)
   sys.exit(1)
 
