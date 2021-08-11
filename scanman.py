@@ -146,14 +146,18 @@ def sort_ipaddress(filepath):
 	Sort and unique IP addresses from a file.
 	arg(s)filepath:str '''
 	
-	# Read file and gather IP addresses.
-	with open(filepath, 'r') as f1:
-		ipaddr_lst = [line.strip() for line in f1]
-		ipaddr_set = set(ipaddr_lst)
-	# Write file with sorted and unique ip addresses. 
-	with open(filepath, 'w+') as f2:
-		for ip in sorted(ipaddr_set, key = lambda ip: [int(ip) for ip in ip.split(".")] ):
-			f2.write(f'{ip}\n')
+	# Patch < - fixed issue after introducing .stdout file extensions.
+	filename, file_ext = os.path.splitext(filepath)
+	if file_ext == '.ip': 
+		# Patch />.		
+		# Read file and gather IP addresses.
+		with open(filepath, 'r') as f1:
+			ipaddr_lst = [line.strip() for line in f1]
+			ipaddr_set = set(ipaddr_lst)
+		# Write file with sorted and unique ip addresses. 
+		with open(filepath, 'w+') as f2:
+			for ip in sorted(ipaddr_set, key = lambda ip: [int(ip) for ip in ip.split(".")] ):
+				f2.write(f'{ip}\n')
 
 
 def main():
@@ -257,13 +261,13 @@ def main():
 					# Debug - print metasploit raw results
 					# print(f'{results}')
 
-					# DEV - save STDOUT to a file.
+					# Parse - save msf STDOUT to a file.
 					results_noansi = remove_ansi(results)
-					# DEV - replace/remove msf RPORT header.
+					# Parse - replace/remove msf RPORT header.
 					results_norport = results_noansi.replace(f'RPORT => {v}', '')
-					# DEV - replace/remove msf RHOST header.
+					# Parse - replace/remove msf RHOST header.
 					results_norhost = results_norport.replace(f'RHOSTS => file:{targetfilepath}', '')
-					# DEV - replace/remove newline.
+					# Parse - replace/remove the first two newlines.
 					results_cleaned = results_norhost.replace(f'\n', '', 2)
 					# Print - cleaned results to stdout.
 					r.console.print(f'[red]{results_cleaned}')
@@ -279,9 +283,6 @@ def main():
 					# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
 					for match in all_matches:
 						db.insert_metasploiter(match.group(), os.path.basename(k))
-						# DEV - commented out.
-						# Print metasploiter results to stdout.
-						# r.console.print(f'{match.group()}[red] VULNERABLE')
 						count += 1
 					r.console.print(f'[bold gold3]Instances {count}')
 					print('\n')
@@ -366,16 +367,15 @@ def main():
 		print('\n')
 	
 	# DEV - broken, since .stdout was added to code.
-	# Sort / unique ip addresses from files in the 'masscan' dir.
-	
-	# for file in os.listdir(masscan_dir):
-	# 	sort_ipaddress(os.path.join(masscan_dir, file))
-	# # Sort / unique ip addresses from files in the 'metasploit' dir.
-	# for file in os.listdir(metasploit_dir):
-	# 	sort_ipaddress(os.path.join(metasploit_dir, file))
-	# # Sort / unique ip addresses from files in the 'nmap' dir.
-	# for file in os.listdir(nmap_dir):
-	# 	sort_ipaddress(os.path.join(nmap_dir, file))
+	# Sort / unique ip addresses from files in the 'masscan' dir.	
+	for file in os.listdir(masscan_dir):
+		sort_ipaddress(os.path.join(masscan_dir, file))
+	# Sort / unique ip addresses from files in the 'metasploit' dir.
+	for file in os.listdir(metasploit_dir):
+		sort_ipaddress(os.path.join(metasploit_dir, file))
+	# Sort / unique ip addresses from files in the 'nmap' dir.
+	for file in os.listdir(nmap_dir):
+		sort_ipaddress(os.path.join(nmap_dir, file))
 
 
 if __name__ == '__main__':
