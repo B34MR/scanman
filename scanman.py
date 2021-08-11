@@ -28,8 +28,9 @@ nmap_config = './configs/nmap.ini'
 # Outputfile dirs.
 MAIN_DIR = './results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
-vulnscan_dir = os.path.join(MAIN_DIR, 'vulnscans')
-portscans_dir = os.path.join(MAIN_DIR, 'portscans')
+masscan_dir = os.path.join(MAIN_DIR, 'masscan')
+metasploit_dir = os.path.join(MAIN_DIR, 'metasploit')
+nmap_dir = os.path.join(MAIN_DIR, 'nmap')
 xml_dir = os.path.join(TMP_DIR, 'xml')
 
 # Nmap / Metasploit temp target/inputlist filepath.
@@ -38,10 +39,42 @@ targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 # Print - aesthetic newline.
 print('\n')
 
+# DEV - added STDOUT dir.
 # Create output dirs.
-directories = [portscans_dir, vulnscan_dir, xml_dir]
+directories = [masscan_dir, metasploit_dir, nmap_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
+
+# Argparse - init and parse.
+args = arguments.parser.parse_args()
+
+
+def group_kwargs(group_title):
+	'''
+	Return arguments:dict for a specific "Argparse Group". 
+	arg(s) group_title:str '''
+
+	for group in arguments.parser._action_groups:
+	  if group.title == group_title:
+	    group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+	    kwargs = vars(arguments.argparse.Namespace(**group_dict))
+	    logging.info(f'\n{group.title.upper()}:\n{kwargs}')
+
+	    return kwargs
+
+
+def remove_key(dictionary, key):
+	'''
+	Remove dictionary key if value is None.
+	arg(s) dictionary:dict, key:str '''
+
+	if dictionary[key] is None:
+		try:
+		  	value = dictionary.pop(key, None)
+		except Exception as e:
+			raise e
+		else:
+			logging.info(f'REMOVED ARGUMENT: "{key}: {value}"')
 
 
 def version_check(mystr, currentver, stablever):
@@ -80,6 +113,18 @@ def create_targetfile(port, targetfilepath):
 		[f1.write(f'{i}\n') for i in results]
 		logging.info(f'Targets written to: {f1.name}')
 
+# DEV
+def remove_ansi(string):
+	'''
+	Remove ANSI escape sequences from a string.
+	arg(s):string:str'''
+	
+	reaesc = re.compile(r'\x1b[^m]*m')
+	new_string = reaesc.sub('', string)
+	
+	return new_string
+
+
 
 def write_results(dictionary, directory, dbquery):
 	''' 
@@ -87,7 +132,7 @@ def write_results(dictionary, directory, dbquery):
 	arg(s)dictionary:dict, directory:str, dbquery:funcobj '''
 
 	for k, v in dictionary.items():
-		filepath = os.path.join(directory, f'{os.path.basename(k)}.txt')
+		filepath = os.path.join(directory, f'{os.path.basename(k)}.ip')
 		results = dbquery(os.path.basename(k))
 		if results != []:
 			logging.info(f'Found results in databse.db:')
@@ -101,23 +146,31 @@ def sort_ipaddress(filepath):
 	Sort and unique IP addresses from a file.
 	arg(s)filepath:str '''
 	
-	# Read file and gather IP addresses.
-	with open(filepath, 'r') as f1:
-		ipaddr_lst = [line.strip() for line in f1]
-		ipaddr_set = set(ipaddr_lst)
-	# Write file with sorted and unique ip addresses. 
-	with open(filepath, 'w+') as f2:
-		for ip in sorted(ipaddr_set, key = lambda ip: [int(ip) for ip in ip.split(".")] ):
-			f2.write(f'{ip}\n')
+	# Patch < - fixed issue after introducing .stdout file extensions.
+	filename, file_ext = os.path.splitext(filepath)
+	if file_ext == '.ip': 
+		# Patch />.		
+		# Read file and gather IP addresses.
+		with open(filepath, 'r') as f1:
+			ipaddr_lst = [line.strip() for line in f1]
+			ipaddr_set = set(ipaddr_lst)
+		# Write file with sorted and unique ip addresses. 
+		with open(filepath, 'w+') as f2:
+			for ip in sorted(ipaddr_set, key = lambda ip: [int(ip) for ip in ip.split(".")] ):
+				f2.write(f'{ip}\n')
 
 
 def main():
 	''' Main Func '''
 
-	# Args - init.
-	args = arguments.parse_args()
-	# Args - inputlist
-	ms_targetfile = args.inputlist
+	# Argparse - group titles.
+	group1_title = 'Masscan Arguments'
+	group2_title = 'Scanman Arguments'
+	# Argparse - return args for a specific "Argparse Group".
+	kwargs = group_kwargs(group1_title)	
+	# Argparse - remove 'excludefile' k,v is value is None.
+	remove_key(kwargs, '--excludefile')
+
 	# ConfigParser - read onfigfile.
 	config = ConfigParser(delimiters='=')
 	config.optionxform = str
@@ -130,10 +183,8 @@ def main():
 	# Sqlite - databse init.
 	db.create_table_masscanner()
 	# ConfigParser - declare dict values.
-	MSCONFIG = {k: v for k, v in config['masscanconfig'].items()}
 	PORTSCANS = {k: v for k, v in config['portscans'].items()}
-	interface = MSCONFIG['interface']
-	rate = MSCONFIG['rate']
+	
 	# Heading1
 	mass_ver = masscanner.Masscanner.get_version()
 	r.console.print(f'[i grey37]Masscan {mass_ver}')
@@ -146,9 +197,9 @@ def main():
 
 	# Masscanner - instance int and run scan.
 	for key, value in PORTSCANS.items():
-		ms = masscanner.Masscanner(interface, rate, key, value, ms_targetfile)
+		ms = masscanner.Masscanner(key, value, **kwargs)
 		# Masscanner - print cmd and launch scan. 
-		print(ms.cmd)		
+		print(ms.cmd)
 		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 			count = 0
 			results = ms.run_scan()
@@ -163,7 +214,7 @@ def main():
 	r.console.print('[bold gold3]All Masscans have completed!')
 		
 	# Sqlite - write db results to file.
-	write_results(PORTSCANS, portscans_dir, db.get_ipaddress_by_description)
+	write_results(PORTSCANS, masscan_dir, db.get_ipaddress_by_description)
 	print('\n')
 
 	# Metasploiter - optional mode.
@@ -209,6 +260,22 @@ def main():
 					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
 					# Debug - print metasploit raw results
 					# print(f'{results}')
+
+					# Parse - save msf STDOUT to a file.
+					results_noansi = remove_ansi(results)
+					# Parse - replace/remove msf RPORT header.
+					results_norport = results_noansi.replace(f'RPORT => {v}', '')
+					# Parse - replace/remove msf RHOST header.
+					results_norhost = results_norport.replace(f'RHOSTS => file:{targetfilepath}', '')
+					# Parse - replace/remove the first two newlines.
+					results_cleaned = results_norhost.replace(f'\n', '', 2)
+					# Print - cleaned results to stdout.
+					r.console.print(f'[red]{results_cleaned}')
+
+					# Dev - write stdout to a file.
+					with open(f'{metasploit_dir}/{os.path.basename(k)}.stdout', 'a+') as f1:
+						f1.write(f'{results_cleaned}\n')
+
 					# Regex - ipv4 pattern
 					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
 					# Regex -  find all matches for ipv4 addresses in metasploiter results.
@@ -216,15 +283,13 @@ def main():
 					# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
 					for match in all_matches:
 						db.insert_metasploiter(match.group(), os.path.basename(k))
-						# Print metasploiter results to stdout.
-						r.console.print(f'{match.group()}[red] VULNERABLE')
 						count += 1
 					r.console.print(f'[bold gold3]Instances {count}')
 					print('\n')
 
 		r.console.print('[bold gold3]All Metasploit scans have completed!')	
 		# Sqlite - write database results to file.
-		write_results(MSFMODULES, vulnscan_dir, db.get_ipaddress_by_msfmodule)
+		write_results(MSFMODULES, metasploit_dir, db.get_ipaddress_by_msfmodule)
 		print('\n')
 
 	# Nmapper - optional mode.
@@ -278,6 +343,12 @@ def main():
 					xmlresults = xmlparse.run(xmlfile)
 					# Omit positive results and print to stdout.
 					for i in xmlresults:
+						
+						# DEV - save STDOUT to a file.
+						with open(f'{nmap_dir}/{k}.stdout', 'a+') as f1:
+							f1.write(f'{i[0]} {i[1].upper()}\n')
+						
+						# Omit positive results and print to stdout.
 						if i[1] != None \
 						and i[1] != 'Message signing enabled and required' \
 						and i[1] != 'required':
@@ -286,20 +357,25 @@ def main():
 							# Print nse-scan results to stdout.
 							r.console.print(f'{i[0]} [red]{i[1].upper()}')
 							count += 1
+
 					r.console.print(f'[bold gold3]Instances {count}')
 					print('\n')
 
 		r.console.print('[bold gold3]All Nmap scans have completed!')
 		# Sqlite - write db results to file.
-		write_results(NSESCRIPTS, vulnscan_dir, db.get_ipaddress_by_nsescript)
+		write_results(NSESCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
 	
-	# Sort / unique ip addresses from files in the 'portscan' dir.
-	for file in os.listdir(portscans_dir):
-		sort_ipaddress(os.path.join(portscans_dir, file))
-	# Sort / unique ip addresses from files in the 'vulnscans' dir.
-	for file in os.listdir(vulnscan_dir):
-		sort_ipaddress(os.path.join(vulnscan_dir, file))
+	# DEV - broken, since .stdout was added to code.
+	# Sort / unique ip addresses from files in the 'masscan' dir.	
+	for file in os.listdir(masscan_dir):
+		sort_ipaddress(os.path.join(masscan_dir, file))
+	# Sort / unique ip addresses from files in the 'metasploit' dir.
+	for file in os.listdir(metasploit_dir):
+		sort_ipaddress(os.path.join(metasploit_dir, file))
+	# Sort / unique ip addresses from files in the 'nmap' dir.
+	for file in os.listdir(nmap_dir):
+		sort_ipaddress(os.path.join(nmap_dir, file))
 
 
 if __name__ == '__main__':

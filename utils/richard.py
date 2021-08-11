@@ -10,8 +10,8 @@ from utils import arguments
 import logging
 
 
-# Args - init.
-args = arguments.parse_args()
+# Argparse - init and parse.
+args = arguments.parser.parse_args()
 loglevel = args.loglevel
 
 # Rich console and theme init.

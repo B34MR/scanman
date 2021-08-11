@@ -13,11 +13,8 @@ class HelpFormatter(argparse.HelpFormatter):
             usage, actions, groups, prefix)
 
 
-def parse_args():
-  ''' Define arguments '''
-  
-  # Custom help menu.
-  custom_usage = """
+# Custom help menu.
+custom_usage = """
   
 Scanman
 --------------------------------------------------\n
@@ -25,41 +22,60 @@ Usage:
   python3 scanman.py -iL /path/to/targetfile.txt
   python3 scanman.py -iL /path/to/targetfile.txt --msf
   python3 scanman.py -iL /path/to/targetfile.txt --nmap
-  python3 scanman.py -iL /path/to/targetfile.txt --msf --nmap
+  python3 scanman.py -iL /path/to/targetfile.txt --excludefile /path/to/excludefile.txt
   python3 scanman.py -iL /path/to/targetfile.txt --drop
   python3 scanman.py -iL /path/to/targetfile.txt --database /path/to/database.db
 
-Common Usage:
+Commonly used Example:
   python3 scanman.py -iL /path/to/targetfile.txt -m -n -d
   
 """
  
-  # Define parser
-  parser = argparse.ArgumentParser(formatter_class=HelpFormatter, description='', usage=custom_usage, add_help=False)
-    
-  # Primary Options.
-  optional_group = parser.add_argument_group('Arguments')
-  optional_group.add_argument('-iL', '--inputlist', type=str, required=False, default='', help='Input from list of hosts/networks')
-  optional_group.add_argument('-m', '--msf', dest='msf', action='store_true', help='Toggle Metasploit Framework (MSF) scans on/off.')
-  optional_group.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Toggle Nmap Script Engine (NSE) scans on/off.')
-  
-  # Secondary Options.
-  optional_group.add_argument('-d', '--drop', dest='droptable', action='store_true', help='Drop existing database tables.')
-  optional_group.add_argument('--database', dest='database', default='.database.db', metavar='DATABASE' ,help='Filepath for database file.')
-  optional_group.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['NOTSET', 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'], help='Configure logging level')
-  
-  # Print 'help' if no options are defined.
-  if len(sys.argv) == 1:
-    parser.print_help(sys.stderr)
-    sys.exit(1)
-  # Initiate parser instance.
-  args = parser.parse_args()
-  return args
+# Define parser
+parser = argparse.ArgumentParser(formatter_class=HelpFormatter, description='', usage=custom_usage, add_help=False)
 
-# Debug - purposes.
+# Primary Options.
+group1 = parser.add_argument_group('Masscan Arguments')
+group1.add_argument('-iL', '--inputlist', dest='-iL', type=str, required=True, help='Input from list of hosts/networks')
+group1.add_argument('-eL', '--excludefile', dest='--excludefile', type=str, required=False, default=None, help='Exclude list from file')
+group1.add_argument('-i', '--interface', dest='-i', type=str, required=False, default='eth0', help='Network Adapter interface')
+group1.add_argument('-r', '--rate', dest='--rate', type=str, required=False, default='250', help="Masscan's rate in kpps")
+
+# Secondary Options.
+group2 = parser.add_argument_group('Scanman Arguments')
+group2.add_argument('-m', '--msf', dest='msf', action='store_true', help='Toggle Metasploit Framework (MSF) scans on/off.')
+group2.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Toggle Nmap Script Engine (NSE) scans on/off.')
+group2.add_argument('-d', '--drop', dest='droptable', action='store_true', help='Drop existing database tables.')
+group2.add_argument('--database', dest='database', default='.database.db', metavar='DATABASE' ,help='Filepath for database file.')
+group2.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['DEBUG', 'INFO', 'WARNING'], help='Set logging level')
+  
+# Print 'help' if no options are defined.
+if len(sys.argv) == 1 \
+or sys.argv[1] == '-h' \
+or sys.argv[1] == '--help':
+  parser.print_help(sys.stderr)
+  sys.exit(1)
+
+# Debug - Coding and troubleshooting purposes.
 def main():
   import arguments
-  arguments.parse_args()
+  
+  args = arguments.parser.parse_args()
+  # print(vars(args))
+
+  for group in parser._action_groups:
+    if group.title == 'Masscan Arguments':
+      group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+      print(group.title)
+      masscan_kwargs = vars(argparse.Namespace(**group_dict))
+      print(masscan_kwargs)
+      print('\n')
+    elif group.title == 'Scanman Arguments':
+      group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
+      print(group.title)
+      scanman_kwargs = vars(argparse.Namespace(**group_dict))
+      print(scanman_kwargs)
+
 
 if __name__ == "__main__":
     main()

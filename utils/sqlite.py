@@ -3,8 +3,8 @@
 import sqlite3
 from utils import arguments
 
-# Args - verbose/loglevel.
-args = arguments.parse_args()
+# Argparse - init and parse.
+args = arguments.parser.parse_args()
 if args.database:
 	database_file = args.database
 else:
