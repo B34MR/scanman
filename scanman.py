@@ -172,7 +172,7 @@ def main():
 	remove_key(kwargs, '--excludefile')
 
 	# ConfigParser - read onfigfile.
-	config = ConfigParser(delimiters='=')
+	config = ConfigParser(allow_no_value=True, delimiters='=')
 	config.optionxform = str
 	
 	# Masscanner - default mode.
@@ -368,35 +368,71 @@ def main():
 	
 	# DEV
 	if args.eyewitness:
+
+		# Non Rich util.
+		def ctrl_c(txt='[ENTER] to continue / [CTRL-C] to quit...'):
+			''' Press ENTER / CTRL-C '''
+
+			try:
+				input(f'\n{txt}')
+			except KeyboardInterrupt:
+				print(f'\nQuit: detected [CTRL-C] ')
+				sys.exit(0)
 		
 		# ConfigParser - read config file.
 		config.read(eyewitness_config)
 		
 		# ConfigParser - declare dict values.
-		EYEWITNESS_CONFIG = {k: v for k, v in config['eyewitness_config'].items()}
-		EYEWITNESS_ARGUMENTS = {k: v for k, v in config['eyewitness_arguments'].items()}
+		EYEWITNESS_CONFIG = {k: v for k, v in config['config'].items()}
+		#
+		eyewit_args = []
+		#
+		for k, v in config['long_args'].items():
+			eyewit_args.append(' '.join([k, v]))
+		# Eyewitness - boolean arguments.
+		[eyewit_args.append(k) for k in config['bool_args']]
 		
-		# Eyewitness - filepath.
-		eyewitness_filename = EYEWITNESS_CONFIG['filename']
-		eyewitness_filepath = EYEWITNESS_CONFIG['filepath']
-		eyewitness_pythonfile =  os.path.join(eyewitness_filepath, eyewitness_filename)
-		print(eyewitness_pythonfile)
-		
-		# Eyewitness - arguments.
-		kwargs = EYEWITNESS_ARGUMENTS
+		# Eyewitness - directories and filepaths.
+		eyewit_filename = EYEWITNESS_CONFIG['filename']
+		eyewit_dir = EYEWITNESS_CONFIG['dir']
+		eyewit_filepath =  os.path.join(eyewit_dir, eyewit_filename)
 
+		# Scanman - directories and filepaths.
+		scanman_filepath = __file__
+		scanman_dir = os.path.dirname(__file__)
+		webxml_dir = 'results/masscan/'
+		webxml_filename = 'web.xml'
+		webxml_filepath = os.path.join(scanman_dir, webxml_dir, webxml_filename)
+
+		# Eyewitness - change work dir to Eyewitness filepath.
+		[print(f'{k} = {v}') for k, v in EYEWITNESS_CONFIG.items()]
+		print(f'{eyewit_args}')
 		
+		print(f'EyeWitness filepath: {eyewit_filepath}')
+		print(f'Scanman filepath: {scanman_filepath}')
+		print(f'Scanman directory: {scanman_dir}')
+		print(f'CWD: {os.getcwd()}')
+		print(f'Changing directory to: {eyewit_dir}')
+		os.chdir(eyewit_dir)
+		print(f'CWD: {os.getcwd()}')
+		print('\n')
+
+
+		# Scanman - find scripts' full filepath.
+			# -> get script dir for web.ips Eyewitness results. 
+
 		# Check for EyeWitness filepath.
 			# -> If not EyeWitness filepath, Print warning.
 
-		# Eyewitness - class wrapper.
+		# Eyewitness - subprocess.
 		import subprocess
-		
-		cmd1 = eyewitness_pythonfile
-		cmd2 = ' '.join([f'--{k} {v}' for k, v in EYEWITNESS_ARGUMENTS.items()])
-		cmd = cmd1 + ' ' + cmd2
 
+		eyewit_args = ' '.join(eyewit_args)
+		cmd = f'{eyewit_filepath} {eyewit_args} -x {webxml_filepath}'
+		print(f'{cmd}\n')
 		cmdlst = cmd.split(' ')
+		print(f'{cmdlst}\n')
+		ctrl_c()
 		
 		try:
 			proc = subprocess.run(cmdlst,
@@ -421,8 +457,12 @@ def main():
 						# Check if install was successful.
 
 		# Perform Port scan.
-			# -> Portscan is read from... SQLite-database by description.
+			# -> Ports are read from... SQLite-database by description.
+				# -> Ports are read from... massscan *.ip result files.
+			# -> XML scan is performed, Masscan or Nmap?
+				# -> masscan oX works.
 			# -> call masscanner or nmapper cli wrapper.
+				# -> masscan
 			# -> Read port scan results.
 
 		# Launch EyeWitness.
