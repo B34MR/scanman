@@ -22,6 +22,7 @@ Usage:
   python3 scanman.py -iL /path/to/targetfile.txt
   python3 scanman.py -iL /path/to/targetfile.txt --msf
   python3 scanman.py -iL /path/to/targetfile.txt --nmap
+  python3 scanman.py -iL /path/to/targetfile.txt --eyewitness
   python3 scanman.py -iL /path/to/targetfile.txt --excludefile /path/to/excludefile.txt
   python3 scanman.py -iL /path/to/targetfile.txt --drop
   python3 scanman.py -iL /path/to/targetfile.txt --database /path/to/database.db
@@ -45,6 +46,7 @@ group1.add_argument('-r', '--rate', dest='--rate', type=str, required=False, def
 group2 = parser.add_argument_group('Scanman Arguments')
 group2.add_argument('-m', '--msf', dest='msf', action='store_true', help='Toggle Metasploit Framework (MSF) scans on/off.')
 group2.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Toggle Nmap Script Engine (NSE) scans on/off.')
+group2.add_argument('-e', '--eyewitness', dest='eyewitness', action='store_true', help='Toggle Eyewitness scans on/off.')
 group2.add_argument('-d', '--drop', dest='droptable', action='store_true', help='Drop existing database tables.')
 group2.add_argument('--database', dest='database', default='.database.db', metavar='DATABASE' ,help='Filepath for database file.')
 group2.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['DEBUG', 'INFO', 'WARNING'], help='Set logging level')

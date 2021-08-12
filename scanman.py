@@ -21,6 +21,7 @@ msf_stablever = '6.0.52'
 nmap_stablever = '7.91'
 
 # Config file dirs.
+eyewitness_config = './configs/eyewitness.ini'
 masscan_config = './configs/masscan.ini'
 msf_config = './configs/metasploit.ini'
 nmap_config = './configs/nmap.ini'
@@ -39,7 +40,6 @@ targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 # Print - aesthetic newline.
 print('\n')
 
-# DEV - added STDOUT dir.
 # Create output dirs.
 directories = [masscan_dir, metasploit_dir, nmap_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
@@ -113,7 +113,7 @@ def create_targetfile(port, targetfilepath):
 		[f1.write(f'{i}\n') for i in results]
 		logging.info(f'Targets written to: {f1.name}')
 
-# DEV
+
 def remove_ansi(string):
 	'''
 	Remove ANSI escape sequences from a string.
@@ -270,7 +270,7 @@ def main():
 					# Parse - replace/remove the first two newlines.
 					results_cleaned = results_norhost.replace(f'\n', '', 2)
 					# Print - cleaned results to stdout.
-					r.console.print(f'[red]{results_cleaned}')
+					r.console.print(f'[red]{results_cleaned.rstrip()}')
 
 					# Dev - write stdout to a file.
 					with open(f'{metasploit_dir}/{os.path.basename(k)}.stdout', 'a+') as f1:
@@ -366,7 +366,82 @@ def main():
 		write_results(NSESCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
 	
-	# DEV - broken, since .stdout was added to code.
+	# DEV
+	if args.eyewitness:
+		
+		# ConfigParser - read config file.
+		config.read(eyewitness_config)
+		
+		# ConfigParser - declare dict values.
+		EYEWITNESS_CONFIG = {k: v for k, v in config['eyewitness_config'].items()}
+		EYEWITNESS_ARGUMENTS = {k: v for k, v in config['eyewitness_arguments'].items()}
+		
+		# Eyewitness - filepath.
+		eyewitness_filename = EYEWITNESS_CONFIG['filename']
+		eyewitness_filepath = EYEWITNESS_CONFIG['filepath']
+		eyewitness_pythonfile =  os.path.join(eyewitness_filepath, eyewitness_filename)
+		print(eyewitness_pythonfile)
+		
+		# Eyewitness - arguments.
+		kwargs = EYEWITNESS_ARGUMENTS
+
+		
+		# Check for EyeWitness filepath.
+			# -> If not EyeWitness filepath, Print warning.
+
+		# Eyewitness - class wrapper.
+		import subprocess
+		
+		cmd1 = eyewitness_pythonfile
+		cmd2 = ' '.join([f'--{k} {v}' for k, v in EYEWITNESS_ARGUMENTS.items()])
+		cmd = cmd1 + ' ' + cmd2
+
+		cmdlst = cmd.split(' ')
+		
+		try:
+			proc = subprocess.run(cmdlst,
+				shell=False,
+				check=True,
+				capture_output=True,
+				text=True)
+		except Exception as e:
+			# Set check=True for the exception to catch.
+			print(e)
+			raise e
+		else:
+			# Debug print only.
+			print(f'STDOUT:\n{proc.stdout}')
+			print(f'STDERR:\n{proc.stderr}')
+		
+		exit()
+
+		# Check if EyeWitness Python is installed.
+				# Install EyeWitness
+					# -> call EyeWitness_install wrapper
+						# Check if install was successful.
+
+		# Perform Port scan.
+			# -> Portscan is read from... SQLite-database by description.
+			# -> call masscanner or nmapper cli wrapper.
+			# -> Read port scan results.
+
+		# Launch EyeWitness.
+			# -> call EyeWitness_cli class warpper.
+
+		# Move EyeWitness results to scanman.
+
+		# Heading1
+		# eyewitness_ver = metasploiter.Metasploiter.get_version()
+		r.console.print(f'[i grey37]Eyewitness {eyewitness_ver}')
+		r.console.rule(style='grey37')
+		
+		# Eyewitness - version check.
+		# version = version_check('Metasploit', msf_ver, msf_stablever)
+		
+		# Eyewitness - print config information.
+		# print_config(msf_config, MSFMODULES)
+		print('\n')
+
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
 	for file in os.listdir(masscan_dir):
 		sort_ipaddress(os.path.join(masscan_dir, file))
