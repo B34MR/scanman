@@ -10,10 +10,9 @@ class Masscanner:
 	# Masscan version cmd.
 	version_cmd = 'masscan --version'
 
-	# DEV
+	
 	def __init__(self, description, ports, **kwargs):
-		''' 
-		Init arg(s)description:str, ports:lst/str'''
+		''' Init arg(s)description:str, ports:lst/str '''
 		
 		self.description = description
 		self.ports = self.scrub_ports(ports)

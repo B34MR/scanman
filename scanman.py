@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import arguments
+from utils import ewrapper
 from utils import metasploiter
 from utils import masscanner
 from utils import mkdir
@@ -21,18 +22,26 @@ msf_stablever = '6.0.52'
 nmap_stablever = '7.91'
 
 # Config file dirs.
-eyewitness_config = './configs/eyewitness.ini'
+eyewit_config = './configs/eyewitness.ini'
 masscan_config = './configs/masscan.ini'
 msf_config = './configs/metasploit.ini'
 nmap_config = './configs/nmap.ini'
 
-# Outputfile dirs.
+# Scanman - directories and filepaths.
+scanman_filepath = __file__
+scanman_dir = os.path.dirname(__file__)
+
+# Relative directories and filepaths.
 MAIN_DIR = './results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
 masscan_dir = os.path.join(MAIN_DIR, 'masscan')
 metasploit_dir = os.path.join(MAIN_DIR, 'metasploit')
 nmap_dir = os.path.join(MAIN_DIR, 'nmap')
 xml_dir = os.path.join(TMP_DIR, 'xml')
+
+# Absolute directories and filepaths.
+eyewit_dir = os.path.join(MAIN_DIR[2:], 'eyewitness')
+webxml_filepath = os.path.join(scanman_dir, eyewit_dir, 'web.xml')
 
 # Nmap / Metasploit temp target/inputlist filepath.
 targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
@@ -41,7 +50,7 @@ targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 print('\n')
 
 # Create output dirs.
-directories = [masscan_dir, metasploit_dir, nmap_dir, xml_dir]
+directories = [eyewit_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -168,10 +177,10 @@ def main():
 	group2_title = 'Scanman Arguments'
 	# Argparse - return args for a specific "Argparse Group".
 	kwargs = group_kwargs(group1_title)	
-	# Argparse - remove 'excludefile' k,v is value is None.
+	# Argparse - remove 'excludefile' k,v if value is None.
 	remove_key(kwargs, '--excludefile')
 
-	# ConfigParser - read onfigfile.
+	# ConfigParser - read configfile.
 	config = ConfigParser(allow_no_value=True, delimiters='=')
 	config.optionxform = str
 	
@@ -180,7 +189,7 @@ def main():
 	# Args - droptable
 	if args.droptable:
 		db.drop_table('Masscanner')
-	# Sqlite - databse init.
+	# Sqlite - database init.
 	db.create_table_masscanner()
 	# ConfigParser - declare dict values.
 	PORTSCANS = {k: v for k, v in config['portscans'].items()}
@@ -197,7 +206,13 @@ def main():
 
 	# Masscanner - instance int and run scan.
 	for key, value in PORTSCANS.items():
-		ms = masscanner.Masscanner(key, value, **kwargs)
+		# Masscanner - check for 'EyeWitness' keyword description.
+		if key.lower() != 'eyewitness':
+			ms = masscanner.Masscanner(key, value, **kwargs)
+		else:
+			# Eyewitness - append 'oX' xml output command.
+			kwargs['-oX'] = webxml_filepath
+			ms = masscanner.Masscanner(key, value, **kwargs)
 		# Masscanner - print cmd and launch scan. 
 		print(ms.cmd)
 		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
@@ -369,118 +384,49 @@ def main():
 	# DEV
 	if args.eyewitness:
 
-		# Non Rich util.
-		def ctrl_c(txt='[ENTER] to continue / [CTRL-C] to quit...'):
-			''' Press ENTER / CTRL-C '''
-
-			try:
-				input(f'\n{txt}')
-			except KeyboardInterrupt:
-				print(f'\nQuit: detected [CTRL-C] ')
-				sys.exit(0)
-		
 		# ConfigParser - read config file.
-		config.read(eyewitness_config)
+		config.read(eyewit_config)
 		
 		# ConfigParser - declare dict values.
-		EYEWITNESS_CONFIG = {k: v for k, v in config['config'].items()}
-		#
-		eyewit_args = []
-		#
-		for k, v in config['long_args'].items():
-			eyewit_args.append(' '.join([k, v]))
-		# Eyewitness - boolean arguments.
+		EYEWIT_SETUP = {k: v for k, v in config['setup'].items()}
+		eyewit_filepath = EYEWIT_SETUP['filepath']
+		eyewit_wrk_dir = os.path.dirname(eyewit_filepath)
+		# Eyewitness Args - long arguments.
+		eyewit_args = [' '.join([k, v]) for k, v in config['long_args'].items()]
+		# Eyewitness Args - append boolean args.
 		[eyewit_args.append(k) for k in config['bool_args']]
-		
-		# Eyewitness - directories and filepaths.
-		eyewit_filename = EYEWITNESS_CONFIG['filename']
-		eyewit_dir = EYEWITNESS_CONFIG['dir']
-		eyewit_filepath =  os.path.join(eyewit_dir, eyewit_filename)
-
-		# Scanman - directories and filepaths.
-		scanman_filepath = __file__
-		scanman_dir = os.path.dirname(__file__)
-		webxml_dir = 'results/masscan/'
-		webxml_filename = 'web.xml'
-		webxml_filepath = os.path.join(scanman_dir, webxml_dir, webxml_filename)
-
-		# Eyewitness - change work dir to Eyewitness filepath.
-		[print(f'{k} = {v}') for k, v in EYEWITNESS_CONFIG.items()]
-		print(f'{eyewit_args}')
-		
-		print(f'EyeWitness filepath: {eyewit_filepath}')
-		print(f'Scanman filepath: {scanman_filepath}')
-		print(f'Scanman directory: {scanman_dir}')
-		print(f'CWD: {os.getcwd()}')
-		print(f'Changing directory to: {eyewit_dir}')
-		os.chdir(eyewit_dir)
-		print(f'CWD: {os.getcwd()}')
-		print('\n')
-
-
-		# Scanman - find scripts' full filepath.
-			# -> get script dir for web.ips Eyewitness results. 
-
-		# Check for EyeWitness filepath.
-			# -> If not EyeWitness filepath, Print warning.
-
-		# Eyewitness - subprocess.
-		import subprocess
-
-		eyewit_args = ' '.join(eyewit_args)
-		cmd = f'{eyewit_filepath} {eyewit_args} -x {webxml_filepath}'
-		print(f'{cmd}\n')
-		cmdlst = cmd.split(' ')
-		print(f'{cmdlst}\n')
-		ctrl_c()
-		
-		try:
-			proc = subprocess.run(cmdlst,
-				shell=False,
-				check=True,
-				capture_output=True,
-				text=True)
-		except Exception as e:
-			# Set check=True for the exception to catch.
-			print(e)
-			raise e
-		else:
-			# Debug print only.
-			print(f'STDOUT:\n{proc.stdout}')
-			print(f'STDERR:\n{proc.stderr}')
-		
-		exit()
-
-		# Check if EyeWitness Python is installed.
-				# Install EyeWitness
-					# -> call EyeWitness_install wrapper
-						# Check if install was successful.
-
-		# Perform Port scan.
-			# -> Ports are read from... SQLite-database by description.
-				# -> Ports are read from... massscan *.ip result files.
-			# -> XML scan is performed, Masscan or Nmap?
-				# -> masscan oX works.
-			# -> call masscanner or nmapper cli wrapper.
-				# -> masscan
-			# -> Read port scan results.
-
-		# Launch EyeWitness.
-			# -> call EyeWitness_cli class warpper.
-
-		# Move EyeWitness results to scanman.
+		# Eyewitness Args - web.xml and results directory args.
+		eyewit_args.append(f'-x {webxml_filepath}')
+		# DEV - Database is locked via -d.
+		# eyewit_args.append(f'-d {os.path.dirname(webxml_filepath)}/report/')
 
 		# Heading1
 		# eyewitness_ver = metasploiter.Metasploiter.get_version()
-		r.console.print(f'[i grey37]Eyewitness {eyewitness_ver}')
+		r.console.print(f'[i grey37]Eyewitness')
 		r.console.rule(style='grey37')
-		
 		# Eyewitness - version check.
 		# version = version_check('Metasploit', msf_ver, msf_stablever)
-		
-		# Eyewitness - print config information.
-		# print_config(msf_config, MSFMODULES)
+			
+		# DEV - print statements.
+		[print(f'{k} = {v}') for k, v in EYEWIT_SETUP.items()]
+		print(f'{eyewit_args}')
+		print(f'EyeWitness filepath: {eyewit_filepath}')
+		print(f'Scanman filepath: {scanman_filepath}')
+		print(f'Scanman directory: {scanman_dir}')
+		# Eyewitness - change working dir to 'EyeWitness' filepath.
+		print(f'CWD: {os.getcwd()}')
+		print(f'Changing directory to: {eyewit_wrk_dir}')
+		os.chdir(eyewit_wrk_dir)
+		print(f'CWD: {os.getcwd()}')
 		print('\n')
+
+		# Eyewitness - print cmd and launch scan.
+		ew = ewrapper.Ewrapper(eyewit_filepath, eyewit_args)
+		print(ew.cmd)
+		ew.run_scan()
+
+		# Return to scanman working dir.
+		os.chdir(scanman_dir)
 
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
 	for file in os.listdir(masscan_dir):
