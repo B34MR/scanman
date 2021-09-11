@@ -61,8 +61,6 @@ class Ewrapper:
 
 		# Eyewitness cmd.
 		cmdlst = self.cmd.split(' ')
-		print(cmdlst)
-		input("Press Enter to continue...")
 
 		try:
 			proc = subprocess.run(cmdlst,
