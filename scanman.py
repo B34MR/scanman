@@ -22,7 +22,7 @@ msf_stablever = '6.0.52'
 nmap_stablever = '7.91'
 
 # Config file dirs.
-eyewit_config = './configs/eyewitness.ini'
+ew_config = './configs/eyewitness.ini'
 masscan_config = './configs/masscan.ini'
 msf_config = './configs/metasploit.ini'
 nmap_config = './configs/nmap.ini'
@@ -32,7 +32,7 @@ scanman_filepath = __file__
 scanman_dir = os.path.dirname(__file__)
 
 # Relative directories and filepaths.
-MAIN_DIR = './results'
+MAIN_DIR = 'results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
 masscan_dir = os.path.join(MAIN_DIR, 'masscan')
 metasploit_dir = os.path.join(MAIN_DIR, 'metasploit')
@@ -40,8 +40,9 @@ nmap_dir = os.path.join(MAIN_DIR, 'nmap')
 xml_dir = os.path.join(TMP_DIR, 'xml')
 
 # Absolute directories and filepaths.
-eyewit_dir = os.path.join(MAIN_DIR[2:], 'eyewitness')
-webxml_filepath = os.path.join(scanman_dir, eyewit_dir, 'web.xml')
+ew_dir = os.path.join(MAIN_DIR, 'eyewitness')
+ew_xml_filepath = os.path.join(scanman_dir, xml_dir, 'eyewitness.xml')
+ew_report = os.path.join('/root/Desktop', 'ew_report')
 
 # Nmap / Metasploit temp target/inputlist filepath.
 targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
@@ -50,7 +51,7 @@ targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 print('\n')
 
 # Create output dirs.
-directories = [eyewit_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
+directories = [ew_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -219,7 +220,7 @@ def main():
 			ms = masscanner.Masscanner(key, value, **kwargs)
 		else:
 			# Eyewitness - append 'oX' xml output command.
-			kwargs['-oX'] = webxml_filepath
+			kwargs['-oX'] = ew_xml_filepath
 			ms = masscanner.Masscanner(key, value, **kwargs)
 		# Masscanner - print cmd and launch scan. 
 		print(ms.cmd)
@@ -390,6 +391,7 @@ def main():
 		print('\n')
 	
 	# DEV
+	# EyeWitness - optional mode.
 	if args.eyewitness:
 
 		# Heading1
@@ -397,30 +399,30 @@ def main():
 		r.console.rule(style='grey37')
 
 		# ConfigParser - read and printc onfig.
-		read_config(eyewit_config)
+		read_config(ew_config)
 
 		# ConfigParser - declare eyewitness filepath.
-		eyewit_filepath = config['setup']['filepath']
-		eyewit_wrk_dir = os.path.dirname(eyewit_filepath)
+		ew_filepath = config['setup']['filepath']
+		ew_wrkdir = os.path.dirname(ew_filepath)
 		
 		# ConfigParser - declare eyewitness args.
-		eyewit_args = []
+		ew_args = []
 		for k, v in config['args'].items():
-			eyewit_args.append(k) if v == None else eyewit_args.append(' '.join([k, v]))
-		# Eyewitness Args - web.xml and results directory args.
-		eyewit_args.append(f'-x {webxml_filepath}')
+			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
+		# Eyewitness Args - append XML input file arg.
+		ew_args.append(f'-x {ew_xml_filepath}')
 		# DEV - Database is locked via -d.
-		# eyewit_args.append(f'-d {os.path.dirname(webxml_filepath)}/report/')
+		ew_args.append(f'-d {ew_report}')
 
 		# Eyewitness - change CWD for eyewitness to work properly.
 		r.console.print(f'CWD: {os.getcwd()}')
-		os.chdir(eyewit_wrk_dir)
-		r.console.print(f'CHDIR: {eyewit_wrk_dir}')
+		os.chdir(ew_wrkdir)
+		r.console.print(f'CHDIR: {ew_wrkdir}')
 		r.console.print(f'CWD: {os.getcwd()}')
 		print('\n')
 
 		# Eyewitness - print cmd and launch scan.
-		ew = ewrapper.Ewrapper(eyewit_filepath, eyewit_args)
+		ew = ewrapper.Ewrapper(ew_filepath, ew_args)
 		print(ew.cmd)
 		# DEV - view current screen.
 		input("Press Enter to continue...")
