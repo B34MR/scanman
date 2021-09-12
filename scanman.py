@@ -34,15 +34,14 @@ scanman_dir = os.path.dirname(__file__)
 # Relative directories and filepaths.
 MAIN_DIR = 'results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
+ew_dir = os.path.join(MAIN_DIR, 'eyewitness')
 masscan_dir = os.path.join(MAIN_DIR, 'masscan')
 metasploit_dir = os.path.join(MAIN_DIR, 'metasploit')
 nmap_dir = os.path.join(MAIN_DIR, 'nmap')
 xml_dir = os.path.join(TMP_DIR, 'xml')
 
 # Absolute directories and filepaths.
-ew_dir = os.path.join(MAIN_DIR, 'eyewitness')
 ew_xml_filepath = os.path.join(scanman_dir, xml_dir, 'eyewitness.xml')
-ew_report = os.path.join('/root/Desktop', 'ew_report')
 
 # Nmap / Metasploit temp target/inputlist filepath.
 targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
@@ -190,6 +189,7 @@ def main():
 	# Argparse - group titles.
 	group1_title = 'Masscan Arguments'
 	group2_title = 'Scanman Arguments'
+	group3_title = 'Eyewitness Arguments'
 	# Argparse - return args for a specific "Argparse Group".
 	kwargs = group_kwargs(group1_title)	
 	# Argparse - remove 'excludefile' k,v if value is None.
@@ -242,9 +242,7 @@ def main():
 	print('\n')
 
 	# Metasploiter - optional mode.
-	if args.msf:
-		# ConfigParser - read config file.
-		config.read(msf_config)
+	if args.msf:		
 		# Args - droptable
 		if args.droptable:
 			db.drop_table('Metasploiter')
@@ -319,8 +317,6 @@ def main():
 
 	# Nmapper - optional mode.
 	if args.nmap:
-		# ConfigParser - read config file.
-		config.read(nmap_config)
 		# Args - droptable
 		if args.droptable:
 			db.drop_table('Nmapper')
@@ -390,9 +386,13 @@ def main():
 		write_results(NSESCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
 	
-	# DEV
 	# EyeWitness - optional mode.
 	if args.eyewitness:
+		# Args - ew_report.
+		if args.ew_report:
+			ew_report_dir = args.ew_report
+		else:
+			ew_report_dir = os.path.join(scanman_dir, ew_dir)
 
 		# Heading1
 		r.console.print(f'[i grey37]Eyewitness')
@@ -409,10 +409,9 @@ def main():
 		ew_args = []
 		for k, v in config['args'].items():
 			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
-		# Eyewitness Args - append XML input file arg.
+		# Eyewitness Args - append XML input file and output directory args.
 		ew_args.append(f'-x {ew_xml_filepath}')
-		# DEV - Database is locked via -d.
-		ew_args.append(f'-d {ew_report}')
+		ew_args.append(f'-d {ew_report_dir}')
 
 		# Eyewitness - change CWD for eyewitness to work properly.
 		r.console.print(f'CWD: {os.getcwd()}')
