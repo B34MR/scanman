@@ -207,6 +207,7 @@ def main():
 	r.console.rule(style='grey37')
 	# Masscanner - version check.
 	version = version_check('Masscan', mass_ver, mass_stablever)
+	
 	# ConfigParser - read and print config.
 	read_config(masscan_config)
 	print('\n')
@@ -215,19 +216,15 @@ def main():
 	
 	# Masscanner - instance int and run scan.
 	for key, value in PORTSCANS.items():
-		# Masscanner - check for 'EyeWitness' keyword description.
-		if key.lower() != 'eyewitness':
-			ms = masscanner.Masscanner(key, value, **kwargs)
-		else:
-			# Eyewitness - append 'oX' xml output command.
-			kwargs['-oX'] = ew_xml_filepath
-			ms = masscanner.Masscanner(key, value, **kwargs)
-		# Masscanner - print cmd and launch scan. 
+
+		# Masscanner - init, print and run scan.
+		ms = masscanner.Masscanner(key, value, **kwargs)
 		print(ms.cmd)
 		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
 			count = 0
 			results = ms.run_scan()
 			r.console.print(f'[grey37]{key.upper()}')
+			
 			# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
 			for i in results:
 				db.insert_masscanner(i[0], i[1], i[2], i[3])
@@ -240,6 +237,68 @@ def main():
 	# Sqlite - write db results to file.
 	write_results(PORTSCANS, masscan_dir, db.get_ipaddress_by_description)
 	print('\n')
+
+	# EyeWitness - optional mode.
+	if args.eyewitness:
+
+		# Args - ew_report.
+		if args.ew_report:
+			ew_report_dir = args.ew_report
+		else:
+			ew_report_dir = os.path.join(scanman_dir, ew_dir)
+
+		# Heading1
+		r.console.print(f'[i grey37]Eyewitness')
+		r.console.rule(style='grey37')
+
+		# ConfigParser - read and print config.
+		read_config(ew_config)
+
+		# ConfigParser - declare eyewitness filepath.
+		ew_filepath = config['setup']['filepath']
+		ew_wrkdir = os.path.dirname(ew_filepath)
+		# ConfigParser - declare eyewitness ports.
+		ew_ports = config['setup']['ports']	
+		# ConfigParser - declare eyewitness args.
+		ew_args = []
+		for k, v in config['args'].items():
+			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
+		# Eyewitness Args - append XML input file and output directory args.
+		ew_args.append(f'-x {ew_xml_filepath}')
+		ew_args.append(f'-d {ew_report_dir}')
+
+		# DEV - Masscanner - init, print and run scan.
+		# Masscanner - add new 'oX' k, v pair.
+		kwargs['-oX'] = ew_xml_filepath
+		ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **kwargs)
+
+		# Masscanner - print cmd and run scan.
+		r.console.print(f'\n[i grey37]Masscan Launched') 
+		print(f'{ms_ew.cmd}')
+		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning Eyewitness Ports') as status:
+			ms_ew.run_scan()
+
+		# Eyewitness - change CWD for eyewitness to work properly.
+		r.console.print(f'\n[i grey37]Eyewitness Launched')
+		r.console.print(f':arrow_right_hook: CWD: {os.getcwd()}')
+		os.chdir(ew_wrkdir)
+		r.console.print(f':arrow_right_hook: CHDIR: {ew_wrkdir}')
+
+		# Eyewitness - print cmd and launch scan.
+		ew = ewrapper.Ewrapper(ew_filepath, ew_args)
+		print(f'\n{ew.cmd}')
+
+		# DEV - view current screen.
+		try:
+			input("Press Enter to continue...")
+		except KeyboardInterrupt as e:
+			print(e)
+			# raise e
+		else:
+			ew.run_scan()
+
+		# Return to scanman working dir.
+		os.chdir(scanman_dir)
 
 	# Metasploiter - optional mode.
 	if args.msf:		
@@ -386,50 +445,6 @@ def main():
 		write_results(NSESCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
 	
-	# EyeWitness - optional mode.
-	if args.eyewitness:
-		# Args - ew_report.
-		if args.ew_report:
-			ew_report_dir = args.ew_report
-		else:
-			ew_report_dir = os.path.join(scanman_dir, ew_dir)
-
-		# Heading1
-		r.console.print(f'[i grey37]Eyewitness')
-		r.console.rule(style='grey37')
-
-		# ConfigParser - read and printc onfig.
-		read_config(ew_config)
-
-		# ConfigParser - declare eyewitness filepath.
-		ew_filepath = config['setup']['filepath']
-		ew_wrkdir = os.path.dirname(ew_filepath)
-		
-		# ConfigParser - declare eyewitness args.
-		ew_args = []
-		for k, v in config['args'].items():
-			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
-		# Eyewitness Args - append XML input file and output directory args.
-		ew_args.append(f'-x {ew_xml_filepath}')
-		ew_args.append(f'-d {ew_report_dir}')
-
-		# Eyewitness - change CWD for eyewitness to work properly.
-		r.console.print(f'CWD: {os.getcwd()}')
-		os.chdir(ew_wrkdir)
-		r.console.print(f'CHDIR: {ew_wrkdir}')
-		r.console.print(f'CWD: {os.getcwd()}')
-		print('\n')
-
-		# Eyewitness - print cmd and launch scan.
-		ew = ewrapper.Ewrapper(ew_filepath, ew_args)
-		print(ew.cmd)
-		# DEV - view current screen.
-		input("Press Enter to continue...")
-		ew.run_scan()
-
-		# Return to scanman working dir.
-		os.chdir(scanman_dir)
-
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
 	for file in os.listdir(masscan_dir):
 		sort_ipaddress(os.path.join(masscan_dir, file))
