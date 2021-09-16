@@ -22,10 +22,13 @@ msf_stablever = '6.0.52'
 nmap_stablever = '7.91'
 
 # Config file dirs.
-ew_config = './configs/eyewitness.ini'
-masscan_config = './configs/masscan.ini'
-msf_config = './configs/metasploit.ini'
-nmap_config = './configs/nmap.ini'
+# DEV - configuration file consolidation.
+main_config = './configs/config.ini'
+#
+# ew_config = './configs/eyewitness.ini'
+# masscan_config = './configs/masscan.ini'
+# msf_config = './configs/metasploit.ini'
+# nmap_config = './configs/nmap.ini'
 
 # Scanman - directories and filepaths.
 scanman_filepath = __file__
@@ -97,9 +100,9 @@ def version_check(mystr, currentver, stablever):
 	Returns if app version is supported or not to stdout. 
 	arg(s):mystr:str, currentver:str, stablever:str '''
 
-	r.console.print(f'Checking version:[grey37] v{currentver}')
+	r.console.print(f'Checking {mystr} version:[grey37] v{currentver}')
 	if currentver == stablever:
-		r.console.print(f':arrow_right_hook: [grey37]v{currentver} is supported.')
+		r.console.print(f':arrow_right_hook: [grey37]{mystr} v{currentver} is supported.')
 	else:
 		r.console.print(f':arrow_right_hook: [orange_red1]Warning [grey53]v{currentver} is unsupported.')
 
@@ -115,9 +118,10 @@ def read_config(my_config):
 	config.read(my_config)
 	r.console.print(f'Reading config file: {my_config}')
 	for dic in config.items():
+		print(config[dic[0]])
 		# Print dict key value pairs.
 		for k, v in config[dic[0]].items():
-			time.sleep(.2)
+			# time.sleep(.1)
 			r.console.print(f':arrow_right_hook: [grey37]{k.upper()}: [grey58]{v}')
 	# r.console.print(f':+1: [gold3]Config loaded!')
 
@@ -195,6 +199,27 @@ def main():
 	# Argparse - remove 'excludefile' k,v if value is None.
 	remove_key(kwargs, '--excludefile')
 
+	# Heading1
+	r.console.print(f'[i grey37]Scanman')
+	r.console.rule(style='grey37')
+
+	# Masscanner - version check.
+	mass_ver = masscanner.Masscanner.get_version()
+	version = version_check('Masscan', mass_ver, mass_stablever)
+	# Metasploiter - version check.
+	msf_ver = metasploiter.Metasploiter.get_version()
+	version = version_check('Metasploit', msf_ver, msf_stablever)
+	# Nmapper - version check.
+	nmap_ver = nmapper.Nmapper.get_version()
+	version = version_check('Nmap', nmap_ver, nmap_stablever)
+
+	# ConfigParser - read and print config.
+	read_config(main_config)
+	print('\n')
+	
+
+	# Masscanner - main mode.
+
 	# Args - droptable
 	if args.droptable:
 		db.drop_table('Masscanner')
@@ -202,20 +227,14 @@ def main():
 	db.create_table_masscanner()
 
 	# Heading1
-	mass_ver = masscanner.Masscanner.get_version()
 	r.console.print(f'[i grey37]Masscan {mass_ver}')
 	r.console.rule(style='grey37')
-	# Masscanner - version check.
-	version = version_check('Masscan', mass_ver, mass_stablever)
 	
-	# ConfigParser - read and print config.
-	read_config(masscan_config)
-	print('\n')
 	# ConfigParser - declare dict values.
-	PORTSCANS = {k: v for k, v in config['portscans'].items()}
+	MASSCAN_PORTSCANS = {k: v for k, v in config['masscan-portscans'].items()}
 	
 	# Masscanner - instance int and run scan.
-	for key, value in PORTSCANS.items():
+	for key, value in MASSCAN_PORTSCANS.items():
 
 		# Masscanner - init, print and run scan.
 		ms = masscanner.Masscanner(key, value, **kwargs)
@@ -235,7 +254,7 @@ def main():
 	r.console.print('[bold gold3]All Masscans have completed!')
 		
 	# Sqlite - write db results to file.
-	write_results(PORTSCANS, masscan_dir, db.get_ipaddress_by_description)
+	write_results(MASSCAN_PORTSCANS, masscan_dir, db.get_ipaddress_by_description)
 	print('\n')
 
 	# EyeWitness - optional mode.
@@ -251,42 +270,37 @@ def main():
 		r.console.print(f'[i grey37]Eyewitness')
 		r.console.rule(style='grey37')
 
-		# ConfigParser - read and print config.
-		read_config(ew_config)
-
 		# ConfigParser - declare eyewitness filepath.
-		ew_filepath = config['setup']['filepath']
+		ew_filepath = config['eyewitness-setup']['filepath']
 		ew_wrkdir = os.path.dirname(ew_filepath)
 		# ConfigParser - declare eyewitness ports.
-		ew_ports = config['setup']['ports']	
+		ew_ports = config['eyewitness-setup']['portscans']	
 		# ConfigParser - declare eyewitness args.
 		ew_args = []
-		for k, v in config['args'].items():
+		for k, v in config['eyewitness-args'].items():
 			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
 		# Eyewitness Args - append XML input file and output directory args.
 		ew_args.append(f'-x {ew_xml_filepath}')
 		ew_args.append(f'-d {ew_report_dir}')
 
-		# DEV - Masscanner - init, print and run scan.
+		# Masscanner - init, print and run scan.
+		
 		# Masscanner - add new 'oX' k, v pair.
 		kwargs['-oX'] = ew_xml_filepath
 		ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **kwargs)
-
 		# Masscanner - print cmd and run scan.
-		r.console.print(f'\n[i grey37]Masscan Launched') 
 		print(f'{ms_ew.cmd}')
 		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning Eyewitness Ports') as status:
 			ms_ew.run_scan()
 
 		# Eyewitness - change CWD for eyewitness to work properly.
-		r.console.print(f'\n[i grey37]Eyewitness Launched')
-		r.console.print(f':arrow_right_hook: CWD: {os.getcwd()}')
-		os.chdir(ew_wrkdir)
-		r.console.print(f':arrow_right_hook: CHDIR: {ew_wrkdir}')
+		r.console.print(f'\n:arrow_right_hook: CWD: {os.getcwd()}')
+		os.chdir(ew_dir)
+		r.console.print(f':arrow_right_hook: CHDIR: {ew_dir}\n')
 
 		# Eyewitness - print cmd and launch scan.
 		ew = ewrapper.Ewrapper(ew_filepath, ew_args)
-		print(f'\n{ew.cmd}')
+		print(f'{ew.cmd}')
 
 		# DEV - view current screen.
 		try:
@@ -309,18 +323,13 @@ def main():
 		db.create_table_metasploiter()
 
 		# Heading1
-		msf_ver = metasploiter.Metasploiter.get_version()
 		r.console.print(f'[i grey37]Metasploit {msf_ver}')
 		r.console.rule(style='grey37')
-		# Metasploiter - version check.
-		version = version_check('Metasploit', msf_ver, msf_stablever)
-		# ConfigParser - read and print config.
-		read_config(msf_config)
-		print('\n')
+
 		# ConfigParser - declare dict values.
-		MSFMODULES = {k: v for k, v in config['msfmodules'].items()}
+		MSF_MODULES = {k: v for k, v in config['msf-modules'].items()}
 		
-		for k, v in MSFMODULES.items():
+		for k, v in MSF_MODULES.items():
 			# Skip 'msfmodule scan' if port does not exists in database.
 			targetlst = db.get_ipaddress_by_port(v)
 			if not targetlst:
@@ -371,7 +380,7 @@ def main():
 
 		r.console.print('[bold gold3]All Metasploit scans have completed!')	
 		# Sqlite - write database results to file.
-		write_results(MSFMODULES, metasploit_dir, db.get_ipaddress_by_msfmodule)
+		write_results(MSF_MODULES, metasploit_dir, db.get_ipaddress_by_msfmodule)
 		print('\n')
 
 	# Nmapper - optional mode.
@@ -383,18 +392,13 @@ def main():
 		db.create_table_nmapper()
 
 		# Heading1
-		nmap_ver = nmapper.Nmapper.get_version()
 		r.console.print(f'[i grey37]Nmap {nmap_ver}')
 		r.console.rule(style='grey37')
-		# Nmapper - version check.
-		version = version_check('Nmap', nmap_ver, nmap_stablever)
-		# ConfigParser - read and print config.
-		read_config(nmap_config)
-		print('\n')
+
 		# ConfigParser - declare dict values.
-		NSESCRIPTS = {k: v for k, v in config['nsescripts'].items()}
+		NMAP_SCRIPTS = {k: v for k, v in config['nmap-scripts'].items()}
 		
-		for k, v in NSESCRIPTS.items():
+		for k, v in NMAP_SCRIPTS.items():
 			# XmlParse - define xml outputfileapth.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
 			# Skip 'msfmodule scan' if port does not exists in database.
@@ -442,7 +446,7 @@ def main():
 
 		r.console.print('[bold gold3]All Nmap scans have completed!')
 		# Sqlite - write db results to file.
-		write_results(NSESCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
+		write_results(NMAP_SCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
 	
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
