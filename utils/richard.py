@@ -5,6 +5,7 @@ from rich import box
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
+from rich.table import Table
 from rich.theme import Theme
 from utils import arguments
 import logging

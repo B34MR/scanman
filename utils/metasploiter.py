@@ -7,10 +7,11 @@ import subprocess
 class Metasploiter:
 	''' Metasploit class wrapper '''
 
-	# MFS version cmd.
+	# MFS cls cmds.
+	filepath_cmd = f'which msfconsole'
 	version_cmd = f'msfconsole -v'
 
-	
+
 	def __init__(self, msfmodule, rport, rhostfile):
 		''' '''
 		self.msfmodule = msfmodule
@@ -19,6 +20,31 @@ class Metasploiter:
 		self.precmd =  f'msfconsole -n -q -x'
 		self.modulecmd =  f"use {self.msfmodule}; set RPORT {self.rport}; set RHOSTS file:{self.rhostfile}; grep '[+]' run; exit"
 		self.cmd = f'{self.precmd} "{self.modulecmd}"'
+
+	
+	@classmethod
+	def get_filepath(cls):
+		'''Return Metasploit filepath:str '''
+		
+		cmdlst = cls.filepath_cmd.split(' ')
+
+		try:
+			proc = subprocess.run(cmdlst,
+				shell=False,
+				check=True,
+				capture_output=True,
+				text=True
+				)
+		except Exception as e:
+			# Set check=True for the exception to catch.
+			logging.exception(e)
+			raise e
+		else:
+			# Debug print only.
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')
+
+			return proc.stdout.strip()
 
 
 	@classmethod

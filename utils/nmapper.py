@@ -8,6 +8,7 @@ class Nmapper:
 	''' Nmap base class wrapper '''
 	
 	# Nmap version cmd.
+	filepath_cmd = 'which nmap'
 	version_cmd = 'nmap -version'
 
 	
@@ -22,6 +23,31 @@ class Nmapper:
 		f"nmap -Pn --script {self.nsescript} -p {self.ports} -iL {self.inputlist} -oX {self.xmlfile}"
 
 
+	@classmethod
+	def get_filepath(cls):
+		''' Return Nmap filepath:str'''
+		
+		# Nmap Version cmd.
+		cmdlst = cls.filepath_cmd.split(' ')
+		
+		try:
+			proc = subprocess.run(cmdlst,
+				shell=False,
+				check=True,
+				capture_output=True,
+				text=True)
+		except Exception as e:
+			# Set check=True for the exception to catch.
+			logging.exception(e)
+			raise e
+		else:
+			# Debug print only.
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')
+		
+		return proc.stdout.strip()
+
+	
 	@classmethod
 	def get_version(cls):
 		''' Return Nmap version:str'''
