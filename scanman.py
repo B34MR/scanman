@@ -16,13 +16,8 @@ import logging
 import time
 
 
-# Stable versions.
-mass_stablever = '1.3.2'
-msf_stablever = '6.0.52'
-nmap_stablever = '7.91'
-
 # Config filepath.
-main_config = './configs/config.ini'
+scanman_config = './configs/config.ini'
 
 # Scanman - directories and filepaths.
 scanman_filepath = __file__
@@ -54,6 +49,11 @@ args = arguments.parser.parse_args()
 # ConfigParser - init and defined instance options.
 config = ConfigParser(allow_no_value=True, delimiters='=')
 config.optionxform = str
+
+# Stable versions.
+mass_stablever = '1.3.2'
+msf_stablever = '6.0.52'
+nmap_stablever = '7.91'
 
 # Application versions.
 masscan_ver = masscanner.Masscanner.get_version()
@@ -95,40 +95,7 @@ def remove_key(dictionary, key):
 		else:
 			logging.info(f'REMOVED ARGUMENT: "{key}: {value}"')
 
-# DEV - no longer used.
-def version_check(mystr, currentver, stablever):
-	''' 
-	Returns if app version is supported or not to stdout. 
-	arg(s):mystr:str, currentver:str, stablever:str '''
-
-	r.console.print(f'Checking {mystr} version:[grey37] v{currentver}')
-	if currentver == stablever:
-		r.console.print(f':arrow_right_hook: [grey37]{mystr} v{currentver} is supported.')
-	else:
-		r.console.print(f':arrow_right_hook: [orange_red1]Warning [grey53]v{currentver} is unsupported.')
-
-
-# DEV
-def read_config(my_config):
-	''' 
-	ConfigParser func.
-	Read and print config file.
-	arg(s) my_config:str '''
-
-	# Clear config cache and read newconfig file.
-	config.clear()
-	config.read(my_config)
-	# r.console.print(f'Reading config file: {my_config}')
-	for dic in config.items():
-		pass
-		# print(config[dic[0]])
-		# Print dict key value pairs.
-		for k, v in config[dic[0]].items():
-			pass
-			# r.console.print(f':arrow_right_hook: [grey37]{k.upper()}: [grey58]{v}')
-	# r.console.print(f':+1: [gold3]Config loaded!')
-
-
+# DEV - not currently used.
 def heading_table(masscan_ver, msf_ver,nmap_ver,\
  	masscan_filepath, msf_filepath, nmap_filepath):
 	''' '''
@@ -231,15 +198,11 @@ def main():
 	# Argparse - remove 'excludefile' k,v if value is None.
 	remove_key(kwargs, '--excludefile')
 
-	# ConfigParser - read and print config.
-	read_config(main_config)
-
-	# # Print heading table.
-	# heading_table(masscan_ver, msf_ver, nmap_ver,\
-	# masscan_filepath, msf_filepath, nmap_filepath)
+	# ConfigParser - clear config cache and read newconfig file.
+	config.clear()
+	config.read(scanman_config)
 
 	# Masscanner - main mode.
-
 	# Args - droptable
 	if args.droptable:
 		db.drop_table('Masscanner')
@@ -261,7 +224,7 @@ def main():
 		ms = masscanner.Masscanner(key, value, **kwargs)
 		r.console.print(f'[grey37]{key.upper()}')
 		print(ms.cmd)
-		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {key.upper()}') as status:
+		with r.console.status(spinner='bouncingBar', status=f'[status.text]{key.upper()}') as status:
 			count = 0
 			results = ms.run_scan()
 			
@@ -277,63 +240,6 @@ def main():
 	# Sqlite - write db results to file.
 	write_results(MASSCAN_PORTSCANS, masscan_dir, db.get_ipaddress_by_description)
 	print('\n')
-
-	# EyeWitness - optional mode.
-	if args.eyewitness:
-		# Args - ew_report.
-		if args.ew_report:
-			ew_report_dir = args.ew_report
-		else:
-			ew_report_dir = os.path.join(scanman_dir, ew_dir)
-
-		# Heading1
-		r.console.print(f'Eyewitness', style='appheading')
-		r.console.rule(style='rulecolor')
-
-		# ConfigParser - declare eyewitness filepath.
-		ew_filepath = config['eyewitness-setup']['filepath']
-		ew_wrkdir = os.path.dirname(ew_filepath)
-		# ConfigParser - declare eyewitness ports.
-		ew_ports = config['eyewitness-setup']['portscans']	
-		# ConfigParser - declare eyewitness args.
-		ew_args = []
-		for k, v in config['eyewitness-args'].items():
-			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
-		# Eyewitness Args - append XML input file and output directory args.
-		ew_args.append(f'-x {ew_xml_filepath}')
-		ew_args.append(f'-d {ew_report_dir}')
-
-		# Masscanner - init, print and run scan.
-		
-		# Masscanner - add new 'oX' k, v pair.
-		kwargs['-oX'] = ew_xml_filepath
-		ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **kwargs)
-		# Masscanner - print cmd and run scan.
-		print(f'{ms_ew.cmd}')
-		with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning Eyewitness Ports') as status:
-			ms_ew.run_scan()
-
-		# DEV - breaks outside of ntfs share.
-		# Eyewitness - change CWD for eyewitness to work properly.
-		# r.console.print(f'\n:arrow_right_hook: CWD: {os.getcwd()}')
-		# os.chdir(ew_dir)
-		# r.console.print(f':arrow_right_hook: CHDIR: {ew_dir}')
-		# r.console.print(f':arrow_right_hook: CWD: {os.getcwd()}\n')
-
-		# Eyewitness - print cmd and launch scan.
-		ew = ewrapper.Ewrapper(ew_filepath, ew_args)
-		print(f'{ew.cmd}')
-
-		# DEV - view current screen.
-		try:
-			input("Press Enter to continue...")
-		except KeyboardInterrupt as e:
-			print(e)
-		else:
-			ew.run_scan()
-
-		# Return to scanman working dir.
-		os.chdir(scanman_dir)
 
 	# Metasploiter - optional mode.
 	if args.msf:		
@@ -368,7 +274,7 @@ def main():
 				# Metasploiter - print cmd and launch scan.
 				r.console.print(f'[grey37]{os.path.basename(k.upper())}')
 				print(metasploit.cmd)
-				with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {os.path.basename(k.upper())}') as status:
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]{os.path.basename(k.upper())}') as status:
 					count = 0
 					results = metasploit.run_scan()
 					# Debug - print metasploit raw results
@@ -440,7 +346,7 @@ def main():
 				# Nmapper - print cmd and launch scan.
 				r.console.print(f'[grey37]{k.upper()}')
 				print(nm.cmd)
-				with r.console.status(spinner='bouncingBar', status=f'[status.text]Scanning {k.upper()}') as status:
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]{k.upper()}') as status:
 					count = 0
 					nm.run_scan()
 				
@@ -472,6 +378,51 @@ def main():
 		write_results(NMAP_SCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
 		print('\n')
 	
+	# EyeWitness - optional mode.
+	if args.eyewitness:
+		# Args - ew_report.
+		if args.ew_report:
+			ew_report_dir = args.ew_report
+		else:
+			ew_report_dir = os.path.join(scanman_dir, ew_dir)
+
+		# Heading1
+		r.console.print(f'Eyewitness', style='appheading')
+		r.console.rule(style='rulecolor')
+
+		# ConfigParser - declare eyewitness filepath.
+		ew_filepath = config['eyewitness-setup']['filepath']
+		ew_wrkdir = os.path.dirname(ew_filepath)
+		# ConfigParser - declare eyewitness ports.
+		ew_ports = config['eyewitness-setup']['portscans']	
+		# ConfigParser - declare eyewitness args.
+		ew_args = []
+		for k, v in config['eyewitness-args'].items():
+			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
+		# Eyewitness Args - append XML input file and output directory args.
+		ew_args.append(f'-x {ew_xml_filepath}')
+		ew_args.append(f'-d {ew_report_dir}')
+
+		# Masscanner - init, print and run scan.
+		
+		# Masscanner - add new 'oX' k, v pair.
+		kwargs['-oX'] = ew_xml_filepath
+		ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **kwargs)
+		# Masscanner - print cmd and run scan.
+		r.console.print(f'[grey37]EYEWITNESS-PORTSCAN')
+		print(f'{ms_ew.cmd}')
+		with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS-PORTSCAN') as status:
+			ms_ew.run_scan()
+		print('\n')
+
+		# Eyewitness - print cmd and launch scan.
+		ew = ewrapper.Ewrapper(ew_filepath, ew_args)
+		r.console.print(f'[grey37]EYEWITNESS.PY')
+		print(f'{ew.cmd}')
+		with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS.PY') as status:
+			results = ew.run_scan()
+			print(f'\n{results}')
+
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
 	for file in os.listdir(masscan_dir):
 		sort_ipaddress(os.path.join(masscan_dir, file))
