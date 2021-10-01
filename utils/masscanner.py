@@ -7,19 +7,44 @@ import logging
 class Masscanner:
 	''' Masscan class wrapper '''
 
-	# Masscan version cmd.
+	# Masscan cls cmds.
+	filepath_cmd = 'which masscan'
 	version_cmd = 'masscan --version'
 
-	# DEV
+	
 	def __init__(self, description, ports, **kwargs):
-		''' 
-		Init arg(s)description:str, ports:lst/str'''
+		''' Init arg(s)description:str, ports:lst/str '''
 		
 		self.description = description
 		self.ports = self.scrub_ports(ports)
 		self.kwargs = ' '.join([f'{k} {v}' for k, v in kwargs.items()])
 		self.cmd = \
 		f'masscan -p {self.ports} {self.kwargs}'
+
+
+	@classmethod
+	def get_filepath(cls):
+		''' Return Masscan filepath:str'''
+		
+		# Masscan filepath cmd.
+		cmdlst = cls.filepath_cmd.split(' ')
+		
+		try:
+			proc = subprocess.run(cmdlst,
+				shell=False,
+				check=True,
+				capture_output=True,
+				text=True)
+		except Exception as e:
+			# Set check=True for the exception to catch.
+			logging.exception(e)
+			raise e
+		else:
+			# Debug print only.
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')
+		
+		return proc.stdout.strip()
 
 
 	@classmethod
@@ -46,7 +71,7 @@ class Masscanner:
 		
 		return proc.stdout.split(' ')[2]
 
-	
+
 	def scrub_ports(self, ports):
 		''' 
 		Scrub ports convert lst to str(if needed), remove any whitespaces

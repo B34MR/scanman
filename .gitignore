@@ -1,9 +1,11 @@
 # App Specific
 .database.db
 database.db
-results/
-outputfiles/
+parsed_xml.txt
 paused.conf
+outputfiles/
+results/
+test/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
