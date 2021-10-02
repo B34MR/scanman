@@ -202,12 +202,12 @@ def main():
 	config.clear()
 	config.read(scanman_config)
 
-	# Masscanner - main mode.
+	# Masscan - main mode.
 	# Args - droptable
 	if args.droptable:
-		db.drop_table('Masscanner')
+		db.drop_table('Masscan')
 	# Sqlite - database init.
-	db.create_table_masscanner()
+	db.create_table_masscan()
 
 	# Heading1
 	print('\n')
@@ -217,7 +217,7 @@ def main():
 	# ConfigParser - declare dict values.
 	MASSCAN_PORTSCANS = {k: v for k, v in config['masscan-portscans'].items()}
 	
-	# Masscanner - instance int and run scan.
+	# Masscan - instance int and run scan.
 	for key, value in MASSCAN_PORTSCANS.items():
 
 		# Masscanner - init, print and run scan.
@@ -230,7 +230,7 @@ def main():
 			
 			# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
 			for i in results:
-				db.insert_masscanner(i[0], i[1], i[2], i[3])
+				db.insert_masscan(i[0], i[1], i[2], i[3])
 				r.console.print(f'{i[0]}:{i[1]}')
 				count += 1
 			r.console.print(f'Instances {count}', style='instances')
@@ -241,13 +241,13 @@ def main():
 	write_results(MASSCAN_PORTSCANS, masscan_dir, db.get_ipaddress_by_description)
 	print('\n')
 
-	# Metasploiter - optional mode.
+	# Metasploit - optional mode.
 	if args.msf:		
 		# Args - droptable
 		if args.droptable:
-			db.drop_table('Metasploiter')
+			db.drop_table('Metasploit')
 		# Sqlite - database init.
-		db.create_table_metasploiter()
+		db.create_table_metasploit()
 
 		# Heading1
 		r.console.print(f'Metasploit {msf_ver} {masscan_filepath}', style='appheading')
@@ -266,12 +266,12 @@ def main():
 				r.console.print(f'Skipped', style='skipcolor')
 				print('\n')
 			else:
-				# Sqlite - fetch targets by metasploiter port(v) and write to flatfile.
+				# Sqlite - fetch targets by metasploit port(v) and write to flatfile.
 				create_targetfile(v, targetfilepath)
-				# Metasploiter - instance init.
+				# Metasploit- instance init.
 				metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
 
-				# Metasploiter - print cmd and launch scan.
+				# Metasploit - print cmd and launch scan.
 				r.console.print(f'[grey37]{os.path.basename(k.upper())}')
 				print(metasploit.cmd)
 				with r.console.status(spinner='bouncingBar', status=f'[status.text]{os.path.basename(k.upper())}') as status:
@@ -297,27 +297,27 @@ def main():
 
 					# Regex - ipv4 pattern
 					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
-					# Regex -  find all matches for ipv4 addresses in metasploiter results.
+					# Regex -  find all matches for ipv4 addresses in metasploit results.
 					all_matches = re.finditer(pattern, results)
-					# Sqlite - insert metasploiter results (match.group():ipaddress, k:msfmodule)
+					# Sqlite - insert metasploit results (match.group():ipaddress, k:vulncheck)
 					for match in all_matches:
-						db.insert_metasploiter(match.group(), os.path.basename(k))
+						db.insert_metasploit(match.group(), os.path.basename(k), results_cleaned)
 						count += 1
 					r.console.print(f'Instances {count}', style='instances')
 					print('\n')
 
 		r.console.print('All Metasploit scans have completed!', style='scanresult')	
 		# Sqlite - write database results to file.
-		write_results(MSF_MODULES, metasploit_dir, db.get_ipaddress_by_msfmodule)
+		write_results(MSF_MODULES, metasploit_dir, db.get_ipaddress_by_msf_vulncheck)
 		print('\n')
 
-	# Nmapper - optional mode.
+	# Nmap - optional mode.
 	if args.nmap:
 		# Args - droptable
 		if args.droptable:
-			db.drop_table('Nmapper')
+			db.drop_table('Nmap')
 		# Sqlite - databse init.
-		db.create_table_nmapper()
+		db.create_table_nmap()
 
 		# Heading1
 		r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
@@ -338,7 +338,7 @@ def main():
 				r.console.print(f'Skipped', style='skipcolor')
 				print('\n')
 			else:
-				# Sqlite - fetch targets by nmapper port(v) and write to flatfile.
+				# Sqlite - fetch targets by nmap port(v) and write to flatfile.
 				create_targetfile(v, targetfilepath)
 				# Nmapper - instance init and run scan.
 				nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
@@ -364,8 +364,8 @@ def main():
 						if i[1] != None \
 						and i[1] != 'Message signing enabled and required' \
 						and i[1] != 'required':
-							# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:nsescript, i[1]:nseoutput). 
-							db.insert_nmapper(i[0], i[2], i[1])
+							# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
+							db.insert_nmap(i[0], i[2], i[1])
 							# Print nse-scan results to stdout.
 							r.console.print(f'{i[0]} [red]{i[1].upper()}')
 							count += 1
@@ -375,7 +375,7 @@ def main():
 
 		r.console.print('All Nmap scans have completed!', style='scanresult')
 		# Sqlite - write db results to file.
-		write_results(NMAP_SCRIPTS, nmap_dir, db.get_ipaddress_by_nsescript)
+		write_results(NMAP_SCRIPTS, nmap_dir, db.get_ipaddress_by_nse_vulncheck)
 		print('\n')
 	
 	# EyeWitness - optional mode.

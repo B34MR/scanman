@@ -15,110 +15,111 @@ conn = sqlite3.connect(database_file)
 c = conn.cursor()
 
 
-# Masscanner
-def create_table_masscanner():
-	''' Create table Masscanner '''
+# Masscan
+def create_table_masscan():
+	''' Create table masscan '''
 
 	try:
 		with conn:
-			c.execute("""CREATE TABLE Masscanner(
-				IPAddress text,
-				Port text,
-				Protocol text,
-				Description text
+			c.execute("""CREATE TABLE Masscan(
+				ipaddress text,
+				port text,
+				protocol text,
+				description text
 				)""")
 	except sqlite3.OperationalError:
 		pass
 
 
-# Masscanner
-def insert_masscanner(ipaddress, port, protocol, description):
+# Masscan
+def insert_masscan(ipaddress, port, protocol, description):
 	''' Insert result [(IP Address, Port, Protocol, Description)] '''
 	
 	with conn:
-		c.execute("INSERT INTO Masscanner VALUES (:ipaddress, :port, :protocol, :description)",
+		c.execute("INSERT INTO masscan VALUES (:ipaddress, :port, :protocol, :description)",
 		 {'ipaddress': ipaddress, 'port': port, 'protocol':protocol, 'description': description})
 
 
-# Masscanner
+# Masscan
 def get_ipaddress_by_port(port):
 	''' Get IP Address by filtering the port value.'''
 
-	c.execute("SELECT * FROM Masscanner WHERE port=:port", {'port': port})
+	c.execute("SELECT * FROM masscan WHERE port=:port", {'port': port})
 	
 	return c.fetchall()
 
 
-# Masscanner
+# Masscan
 def get_ipaddress_by_description(description):
 	''' Get IP Address by filtering the description value.'''
 
-	c.execute("SELECT * FROM Masscanner WHERE description=:description", {'description': description})
+	c.execute("SELECT * FROM masscan WHERE description=:description", {'description': description})
 	
 	return c.fetchall()
 
 
-# Metasploiter
-def create_table_metasploiter():
-	''' Create table Nmapper '''
+# Metasploit
+def create_table_metasploit():
+	''' Create table Metasploit '''
 
 	try:
 		with conn:
-			c.execute("""CREATE TABLE Metasploiter(
-				IPAddress text,
-				MSFModule text
+			c.execute("""CREATE TABLE Metasploit(
+				ipaddress text,
+				vulncheck text,
+				result text
 				)""")
 	except sqlite3.OperationalError:
 		pass
 
 
-# Metasploiter
-def insert_metasploiter(ipaddress, msfmodule):
-	''' Insert result [(ipaddress, msfmodule)] '''
+# Metasploit
+def insert_metasploit(ipaddress, vulncheck, result):
+	''' Insert result [(ipaddress, vulncheck, result)] '''
 	
 	with conn:
-		c.execute("INSERT INTO Metasploiter VALUES (:ipaddress, :msfmodule)",
-		 {'ipaddress': ipaddress, 'msfmodule': msfmodule})
+		c.execute("INSERT INTO metasploit VALUES (:ipaddress, :vulncheck, :result)",
+		 {'ipaddress': ipaddress, 'vulncheck': vulncheck, 'result': result})
 
 
-# Metasploiter
-def get_ipaddress_by_msfmodule(msfmodule):
-	''' Get IP Address by filtering the msfmodule value.'''
+# Metasploit
+def get_ipaddress_by_msf_vulncheck(vulncheck):
+	''' Get IP Address by filtering the vulncheck value.'''
 
-	c.execute("SELECT * FROM Metasploiter WHERE msfmodule=:msfmodule", {'msfmodule': msfmodule})
+	c.execute("SELECT * FROM metasploit WHERE vulncheck=:vulncheck", {'vulncheck': vulncheck})
 	
 	return c.fetchall()
 
 
-# Nmapper
-def create_table_nmapper():
-	''' Create table Nmapper '''
+# Nmap
+def create_table_nmap():
+	''' Create table Nmap '''
 
 	try:
 		with conn:
-			c.execute("""CREATE TABLE Nmapper(
-				IPAddress text,
-				NSEScript text,
-				NSESResult text
+			c.execute("""CREATE TABLE Nmap(
+				ipaddress text,
+				vulncheck text,
+				result text
 				)""")
 	except sqlite3.OperationalError:
 		pass
 
 
-# Nmapper
-def insert_nmapper(ipaddress, nsescript, nseresult):
-	''' Insert result [(ipaddress, nsescript, nseresult)] '''
+# Nmap
+def insert_nmap(ipaddress, vulncheck, result):
+	''' Insert result [(ipaddress, vulncheck, result)] '''
 	
 	with conn:
-		c.execute("INSERT INTO Nmapper VALUES (:ipaddress, :nsescript, :nseresult)",
-		 {'ipaddress': ipaddress, 'nsescript': nsescript, 'nseresult': nseresult})
+		c.execute("INSERT INTO nmap VALUES (:ipaddress, :vulncheck, :result)",
+		 {'ipaddress': ipaddress, 'vulncheck': vulncheck, 'result': result})
 
 
-# Nmapper
-def get_ipaddress_by_nsescript(nsescript):
-	''' Get IP Address by filtering the nsescript value.'''
+# Nmap
+def get_ipaddress_by_nse_vulncheck(vulncheck):
+	''' Get IP Address by filtering the vulncheck value.'''
 
-	c.execute("SELECT * FROM Nmapper WHERE nsescript=:nsescript", {'nsescript': nsescript})
+	c.execute("SELECT * FROM nmap WHERE vulncheck=:vulncheck", {'vulncheck': vulncheck})
 	
 	return c.fetchall()
 
