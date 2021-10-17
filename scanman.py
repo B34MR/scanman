@@ -151,7 +151,6 @@ def remove_ansi(string):
 	return new_string
 
 
-
 def write_results(dictionary, directory, dbquery):
 	''' 
 	Write database results to a flatfile. 
@@ -291,22 +290,22 @@ def main():
 					# Print - cleaned results to stdout.
 					r.console.print(f'[red]{results_cleaned.rstrip()}')
 
-					# Dev - write stdout to a file.
-					with open(f'{metasploit_dir}/{os.path.basename(k)}.stdout', 'a+') as f1:
-						f1.write(f'{results_cleaned}\n')
-
 					# Regex - ipv4 pattern
 					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
-					# Regex -  find all matches for ipv4 addresses in metasploit results.
-					all_matches = re.finditer(pattern, results)
-					# Sqlite - insert metasploit results (match.group():ipaddress, k:vulncheck)
-					for match in all_matches:
-						db.insert_metasploit(match.group(), os.path.basename(k), results_cleaned)
+					# Regex - convert each '\n' in 'results_cleaned' to a list indice.
+					results_list = results_cleaned.rstrip().split('\n')
+					# Regex -  find all matches for ipv4 addresses in each results_list indice.
+					for i in results_list:
+						all_matches = re.finditer(pattern, i)
+						for match in all_matches:
+							# Sqlite - insert metasploit results (match.group():ipaddress, k:vulncheck, i:result)
+							db.insert_metasploit(match.group(), os.path.basename(k), i)
 						count += 1
 					r.console.print(f'Instances {count}', style='instances')
 					print('\n')
 
-		r.console.print('All Metasploit scans have completed!', style='scanresult')	
+		r.console.print('All Metasploit scans have completed!', style='scanresult')
+		# DEV - update with stdout results.
 		# Sqlite - write database results to file.
 		write_results(MSF_MODULES, metasploit_dir, db.get_ipaddress_by_msf_vulncheck)
 		print('\n')
