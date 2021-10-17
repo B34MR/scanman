@@ -52,7 +52,7 @@ config.optionxform = str
 
 # Stable versions.
 mass_stablever = '1.3.2'
-msf_stablever = '6.0.52'
+msf_stablever = '6.1.8'
 nmap_stablever = '7.91'
 
 # Application versions.
@@ -249,7 +249,7 @@ def main():
 		db.create_table_metasploit()
 
 		# Heading1
-		r.console.print(f'Metasploit {msf_ver} {masscan_filepath}', style='appheading')
+		r.console.print(f'Metasploit {msf_ver} {msf_filepath}', style='appheading')
 		r.console.rule(style='rulecolor')
 
 		# ConfigParser - declare dict values.
