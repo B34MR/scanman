@@ -48,7 +48,8 @@ group2.add_argument('-m', '--msf', dest='msf', action='store_true', help='Toggle
 group2.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Toggle Nmap Script Engine (NSE) scans on/off.')
 group2.add_argument('-e', '--eyewitness', dest='eyewitness', action='store_true', help='Toggle Eyewitness scans on/off.')
 group2.add_argument('-d', '--drop', dest='droptable', action='store_true', help='Drop existing database tables.')
-group2.add_argument('--database', dest='database', default='.database.db', metavar='' ,help='Filepath for database file.')
+group2.add_argument('--ip', dest='parse_ip', action='store_true', help='Parse IP Addresses from results.')
+group2.add_argument('--database', dest='database', default='.database.db', metavar='' , help='Filepath for database file.')
 group2.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['DEBUG', 'INFO', 'WARNING'], help='Set logging level')
 
 # Group3 Options.

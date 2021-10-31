@@ -12,7 +12,10 @@ else:
 
 # Database init.
 conn = sqlite3.connect(database_file)
+# Cursor init.
 c = conn.cursor()
+# Cursor results in datatype dict, default is tuple.
+c.row_factory = sqlite3.Row
 
 
 # Masscan
@@ -30,7 +33,6 @@ def create_table_masscan():
 	except sqlite3.OperationalError:
 		pass
 
-
 # Masscan
 def insert_masscan(ipaddress, port, protocol, description):
 	''' Insert result [(IP Address, Port, Protocol, Description)] '''
@@ -39,23 +41,29 @@ def insert_masscan(ipaddress, port, protocol, description):
 		c.execute("INSERT INTO masscan VALUES (:ipaddress, :port, :protocol, :description)",
 		 {'ipaddress': ipaddress, 'port': port, 'protocol':protocol, 'description': description})
 
-
 # Masscan
 def get_ipaddress_by_port(port):
-	''' Get IP Address by filtering the port value.'''
+	''' Get ipaddress column by filtering the port value.'''
 
-	c.execute("SELECT * FROM masscan WHERE port=:port", {'port': port})
+	c.execute("SELECT ipaddress FROM masscan WHERE port=:port", {'port': port})
 	
-	return c.fetchall()
+	return  {f"{dic['ipaddress']}" for dic in c.fetchall()}
 
+# Masscan
+def get_ipaddress_and_port_by_description(description):
+	''' Get ipaddress and port column by filtering the description value.'''
+
+	c.execute("SELECT ipaddress, port FROM masscan WHERE description=:description", {'description': description})
+
+	return {f"{dic['ipaddress']}:{dic['port']}" for dic in c.fetchall()}
 
 # Masscan
 def get_ipaddress_by_description(description):
-	''' Get IP Address by filtering the description value.'''
+	''' Get ipaddress column by filtering the description value.'''
 
-	c.execute("SELECT * FROM masscan WHERE description=:description", {'description': description})
+	c.execute("SELECT ipaddress FROM masscan WHERE description=:description", {'description': description})
 	
-	return c.fetchall()
+	return {f"{dic['ipaddress']}" for dic in c.fetchall()}
 
 
 # Metasploit
@@ -72,7 +80,6 @@ def create_table_metasploit():
 	except sqlite3.OperationalError:
 		pass
 
-
 # Metasploit
 def insert_metasploit(ipaddress, vulncheck, result):
 	''' Insert result [(ipaddress, vulncheck, result)] '''
@@ -81,14 +88,21 @@ def insert_metasploit(ipaddress, vulncheck, result):
 		c.execute("INSERT INTO metasploit VALUES (:ipaddress, :vulncheck, :result)",
 		 {'ipaddress': ipaddress, 'vulncheck': vulncheck, 'result': result})
 
-
 # Metasploit
 def get_ipaddress_by_msf_vulncheck(vulncheck):
-	''' Get IP Address by filtering the vulncheck value.'''
+	''' Get ipaddress column by filtering the vulncheck value.'''
 
-	c.execute("SELECT * FROM metasploit WHERE vulncheck=:vulncheck", {'vulncheck': vulncheck})
+	c.execute("SELECT ipaddress FROM metasploit WHERE vulncheck=:vulncheck", {'vulncheck': vulncheck})
 	
-	return c.fetchall()
+	return {f"{dic['ipaddress']}" for dic in c.fetchall()}
+
+# Metasploit
+def get_result_by_msf_vulncheck(vulncheck):
+	''' Get result column by filtering the vulncheck value.'''
+
+	c.execute("SELECT result FROM metasploit WHERE vulncheck=:vulncheck", {'vulncheck': vulncheck})
+	
+	return {f"{dic['result']}" for dic in c.fetchall()}
 
 
 # Nmap
@@ -105,7 +119,6 @@ def create_table_nmap():
 	except sqlite3.OperationalError:
 		pass
 
-
 # Nmap
 def insert_nmap(ipaddress, vulncheck, result):
 	''' Insert result [(ipaddress, vulncheck, result)] '''
@@ -114,14 +127,21 @@ def insert_nmap(ipaddress, vulncheck, result):
 		c.execute("INSERT INTO nmap VALUES (:ipaddress, :vulncheck, :result)",
 		 {'ipaddress': ipaddress, 'vulncheck': vulncheck, 'result': result})
 
-
 # Nmap
 def get_ipaddress_by_nse_vulncheck(vulncheck):
-	''' Get IP Address by filtering the vulncheck value.'''
+	''' Get ipaddress column by filtering the vulncheck value.'''
 
-	c.execute("SELECT * FROM nmap WHERE vulncheck=:vulncheck", {'vulncheck': vulncheck})
+	c.execute("SELECT ipaddress FROM nmap WHERE vulncheck=:vulncheck", {'vulncheck': vulncheck})
 	
-	return c.fetchall()
+	return {f"{dic['ipaddress']}" for dic in c.fetchall()}
+
+# Nmap
+def get_ipaddress_and_result_by_nse_vulncheck(vulncheck):
+	''' Get ipaddress and result column by filtering the vulncheck value.'''
+
+	c.execute("SELECT ipaddress, result FROM nmap WHERE vulncheck=:vulncheck", {'vulncheck': vulncheck})
+	
+	return {f"{dic['ipaddress']} {dic['result']}" for dic in c.fetchall()}
 
 
 def drop_table(tablename):

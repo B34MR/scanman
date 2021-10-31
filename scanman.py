@@ -131,12 +131,10 @@ def create_targetfile(port, targetfilepath):
 	then write results to a flatfile.
 	arg(s)port:str, targetfilepath:str '''
 	
-	# DEV - support multiple ports.
-	# Sqlite - fetch targets by filtering the port.
-	results = [i[0] for i in db.get_ipaddress_by_port(port)]
 	# Write targets to temp outputfile (targets are overwritten on each loop).
 	with open(targetfilepath, 'w+') as f1:
-		[f1.write(f'{i}\n') for i in results]
+		# Sqlite - fetch targets by filtering the port.
+		[f1.write(f'{i}\n') for i in db.get_ipaddress_by_port(port)]
 		logging.info(f'Targets written to: {f1.name}')
 
 
@@ -151,18 +149,20 @@ def remove_ansi(string):
 	return new_string
 
 
-def write_results(dictionary, directory, dbquery):
+def write_results(file_ext, directory, dictionary, dbquery):
 	''' 
 	Write database results to a flatfile. 
-	arg(s)dictionary:dict, directory:str, dbquery:funcobj '''
+	arg(s)file_ext:str, dictionary:dict, directory:str, dbquery:funcobj '''
 
 	for k, v in dictionary.items():
-		filepath = os.path.join(directory, f'{os.path.basename(k)}.txt')
+		filepath = os.path.join(directory, f'{os.path.basename(k)}.{file_ext}')
 		results = dbquery(os.path.basename(k))
-		if results != []:
+		if results != [] and results != set():
+			# Debug - print.
+			# print(results)
 			logging.info(f'Found results in databse.db:')
 			with open(filepath, 'w+') as f1:
-				[f1.write(f'{result[0]}\n') for result in results]
+				[f1.write(f'{result}\n') for result in results]
 				r.console.print(f'Results written to: {f1.name}')
 
 
@@ -173,7 +173,7 @@ def sort_ipaddress(filepath):
 	
 	# Patch < - fixed issue after introducing .stdout file extensions.
 	filename, file_ext = os.path.splitext(filepath)
-	if file_ext == '.txt': 
+	if file_ext == '.ip': 
 		# Patch />.		
 		# Read file and gather IP addresses.
 		with open(filepath, 'r') as f1:
@@ -237,7 +237,11 @@ def main():
 	r.console.print('All Masscans have completed!', style="scanresult")
 		
 	# Sqlite - write db results to file.
-	write_results(MASSCAN_PORTSCANS, masscan_dir, db.get_ipaddress_by_description)
+	write_results('txt', masscan_dir, \
+		MASSCAN_PORTSCANS, db.get_ipaddress_and_port_by_description)
+	if args.parse_ip:
+		write_results('ip', masscan_dir, \
+			MASSCAN_PORTSCANS, db.get_ipaddress_by_description)
 	print('\n')
 
 	# Metasploit - optional mode.
@@ -300,14 +304,18 @@ def main():
 						for match in all_matches:
 							# Sqlite - insert metasploit results (match.group():ipaddress, k:vulncheck, i:result)
 							db.insert_metasploit(match.group(), os.path.basename(k), i)
-						count += 1
+							count += 1
 					r.console.print(f'Instances {count}', style='instances')
 					print('\n')
 
 		r.console.print('All Metasploit scans have completed!', style='scanresult')
-		# DEV - update with stdout results.
 		# Sqlite - write database results to file.
-		write_results(MSF_MODULES, metasploit_dir, db.get_ipaddress_by_msf_vulncheck)
+		write_results('txt', metasploit_dir, \
+			MSF_MODULES, db.get_result_by_msf_vulncheck)
+		# Args - parse-ip
+		if args.parse_ip:
+			write_results('ip', metasploit_dir, \
+				MSF_MODULES, db.get_ipaddress_by_msf_vulncheck)
 		print('\n')
 
 	# Nmap - optional mode.
@@ -354,12 +362,6 @@ def main():
 					xmlresults = xmlparse.run(xmlfile)
 					# Omit positive results and print to stdout.
 					for i in xmlresults:
-						
-						# DEV - save STDOUT to a file.
-						with open(f'{nmap_dir}/{k}.stdout', 'a+') as f1:
-							f1.write(f'{i[0]} {i[1].upper()}\n')
-						
-						# Omit positive results and print to stdout.
 						if i[1] != None \
 						and i[1] != 'Message signing enabled and required' \
 						and i[1] != 'required':
@@ -373,9 +375,15 @@ def main():
 					print('\n')
 
 		r.console.print('All Nmap scans have completed!', style='scanresult')
-		# Sqlite - write db results to file.
-		write_results(NMAP_SCRIPTS, nmap_dir, db.get_ipaddress_by_nse_vulncheck)
+		# Sqlite - write database results to file.
+		write_results('txt', nmap_dir, \
+			NMAP_SCRIPTS, db.get_ipaddress_and_result_by_nse_vulncheck)
+		# Args - parse-ip
+		if args.parse_ip:
+			write_results('ip', nmap_dir, \
+				NMAP_SCRIPTS, db.get_ipaddress_by_nse_vulncheck)
 		print('\n')
+
 	
 	# EyeWitness - optional mode.
 	if args.eyewitness:
