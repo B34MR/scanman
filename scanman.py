@@ -357,20 +357,27 @@ def main():
 					count = 0
 					nm.run_scan()
 				
-					# XmlParse - instance init, read xmlfile and return results to database.
+					# XmlParse - instance init.
 					xmlparse = xmlparser.NseParser()
-					xmlresults = xmlparse.run(xmlfile)
-					# Omit positive results and print to stdout.
-					for i in xmlresults:
-						if i[1] != None \
-						and i[1] != 'Message signing enabled and required' \
-						and i[1] != 'required':
-							# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
-							db.insert_nmap(i[0], i[2], i[1])
-							# Print nse-scan results to stdout.
-							r.console.print(f'{i[0]} [red]{i[1].upper()}')
-							count += 1
 
+					# XmlParse - read xmlfile and return results to database.
+					try:
+						xmlresults = xmlparse.run(xmlfile)
+					except Exception as e:
+						pass
+						print(f'{e}')
+						r.console.print(f'[orange_red1]WARNING: XMLParser failed, vulncheck skipped.')
+					else:
+						# Omit positive results and print to stdout.
+						for i in xmlresults:
+							if i[1] != None \
+							and i[1] != 'Message signing enabled and required' \
+							and i[1] != 'required':
+								# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
+								db.insert_nmap(i[0], i[2], i[1])
+								# Print nse-scan results to stdout.
+								r.console.print(f'{i[0]} [red]{i[1].upper()}')
+								count += 1
 					r.console.print(f'Instances {count}', style='instances')
 					print('\n')
 
