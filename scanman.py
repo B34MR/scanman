@@ -202,47 +202,48 @@ def main():
 	config.read(scanman_config)
 
 	# Masscan - main mode.
-	# Args - droptable
-	if args.droptable:
-		db.drop_table('Masscan')
-	# Sqlite - database init.
-	db.create_table_masscan()
+	if not args.nomasscan:
+		# Args - droptable
+		if args.droptable:
+			db.drop_table('Masscan')
+		# Sqlite - database init.
+		db.create_table_masscan()
 
-	# Heading1
-	print('\n')
-	r.console.print(f'Masscan {masscan_ver} {masscan_filepath}', style='appheading')
-	r.console.rule(style='rulecolor')
-	
-	# ConfigParser - declare dict values.
-	MASSCAN_PORTSCANS = {k: v for k, v in config['masscan-portscans'].items()}
-	
-	# Masscan - instance int and run scan.
-	for key, value in MASSCAN_PORTSCANS.items():
-
-		# Masscanner - init, print and run scan.
-		ms = masscanner.Masscanner(key, value, **kwargs)
-		r.console.print(f'[grey37]{key.upper()}')
-		print(ms.cmd)
-		with r.console.status(spinner='bouncingBar', status=f'[status.text]{key.upper()}') as status:
-			count = 0
-			results = ms.run_scan()
-			
-			# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
-			for i in results:
-				db.insert_masscan(i[0], i[1], i[2], i[3])
-				r.console.print(f'{i[0]}:{i[1]}')
-				count += 1
-			r.console.print(f'Instances {count}', style='instances')
-			print('\n')
-	r.console.print('All Masscans have completed!', style="scanresult")
+		# Heading1
+		print('\n')
+		r.console.print(f'Masscan {masscan_ver} {masscan_filepath}', style='appheading')
+		r.console.rule(style='rulecolor')
 		
-	# Sqlite - write db results to file.
-	write_results('txt', masscan_dir, \
-		MASSCAN_PORTSCANS, db.get_ipaddress_and_port_by_description)
-	if args.parse_ip:
-		write_results('ip', masscan_dir, \
-			MASSCAN_PORTSCANS, db.get_ipaddress_by_description)
-	print('\n')
+		# ConfigParser - declare dict values.
+		MASSCAN_PORTSCANS = {k: v for k, v in config['masscan-portscans'].items()}
+		
+		# Masscan - instance int and run scan.
+		for key, value in MASSCAN_PORTSCANS.items():
+
+			# Masscanner - init, print and run scan.
+			ms = masscanner.Masscanner(key, value, **kwargs)
+			r.console.print(f'[grey37]{key.upper()}')
+			print(ms.cmd)
+			with r.console.status(spinner='bouncingBar', status=f'[status.text]{key.upper()}') as status:
+				count = 0
+				results = ms.run_scan()
+				
+				# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
+				for i in results:
+					db.insert_masscan(i[0], i[1], i[2], i[3])
+					r.console.print(f'{i[0]}:{i[1]}')
+					count += 1
+				r.console.print(f'Instances {count}', style='instances')
+				print('\n')
+		r.console.print('All Masscans have completed!', style="scanresult")
+			
+		# Sqlite - write db results to file.
+		write_results('txt', masscan_dir, \
+			MASSCAN_PORTSCANS, db.get_ipaddress_and_port_by_description)
+		if args.parse_ip:
+			write_results('ip', masscan_dir, \
+				MASSCAN_PORTSCANS, db.get_ipaddress_by_description)
+		print('\n')
 
 	# Metasploit - optional mode.
 	if args.msf:		
