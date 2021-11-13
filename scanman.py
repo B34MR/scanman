@@ -369,11 +369,20 @@ def main():
 						print(f'{e}')
 						r.console.print(f'[orange_red1]WARNING: XMLParser failed, vulncheck skipped.')
 					else:
-						# Omit positive results and print to stdout.
 						for i in xmlresults:
-							if i[1] != None \
-							and i[1] != 'Message signing enabled and required' \
-							and i[1] != 'required':
+							# Omit None type and false positive results for SMB-Signing.
+							if args.smbparse:
+								if i[1] != None \
+								and i[1] != 'Message signing enabled and required' \
+								and i[1] != 'required' \
+								and i[1] != 'supported':
+									# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
+									db.insert_nmap(i[0], i[2], i[1])
+									# Print nse-scan results to stdout.
+									r.console.print(f'{i[0]} [red]{i[1].upper()}')
+									count += 1
+							# Omit None type results from xmlresults.
+							elif i[1] != None:
 								# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
 								db.insert_nmap(i[0], i[2], i[1])
 								# Print nse-scan results to stdout.

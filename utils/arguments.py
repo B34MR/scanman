@@ -24,11 +24,10 @@ Usage Examples:
   python3 scanman.py -iL /path/to/targetfile.txt --nmap
   python3 scanman.py -iL /path/to/targetfile.txt --eyewitness
   python3 scanman.py -iL /path/to/targetfile.txt --excludefile /path/to/excludefile.txt
-  python3 scanman.py -iL /path/to/targetfile.txt --drop
   python3 scanman.py -iL /path/to/targetfile.txt --database /path/to/database.db
 
 Typical Usage:
-  python3 scanman.py -iL /path/to/targetfile.txt -m -n -e
+  python3 scanman.py -iL /path/to/targetfile.txt -m -n -e --ip --smbparse
   
 """
  
@@ -48,8 +47,9 @@ group2.add_argument('-m', '--msf', dest='msf', action='store_true', help='Enable
 group2.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Enable Vulnscans.')
 group2.add_argument('-e', '--eyewitness', dest='eyewitness', action='store_true', help='Enable Eyewitness scans.')
 group2.add_argument('-nm', '--no-masscan', dest='nomasscan', action='store_true', help='Disable Masscan portscans.')
-group2.add_argument('-d', '--drop-tables', dest='droptable', action='store_true', help='Drop existing database tables.')
+group2.add_argument('--d', '--drop-tables', dest='droptable', action='store_true', help='Drop existing database tables.')
 group2.add_argument('--ip', dest='parse_ip', action='store_true', help='Enable ipaddress parser.')
+group2.add_argument('--smbparse', dest='smbparse', action='store_true', help='Parse out false positives for smb-signing.')
 group2.add_argument('--database', dest='database', default='.database.db', metavar='' , help='Filepath for database file.')
 group2.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['DEBUG', 'INFO', 'WARNING'], help='Set logging level')
 
