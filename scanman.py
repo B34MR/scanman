@@ -11,6 +11,7 @@ from utils import sqlite as db
 from utils import xmlparser
 from configparser import ConfigParser
 import os
+import sys
 import re
 import logging
 import time
@@ -201,6 +202,15 @@ def main():
 	config.clear()
 	config.read(scanman_config)
 
+	# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
+	try:
+		if args.ew_report:
+			r.console.print(f'\n[orange_red1]WARNING: All existing contents within the directory "{args.ew_report}" will be overwritten.')
+			input(f'\n[ENTER] to continue / [CTRL-C] to quit...')
+	except KeyboardInterrupt:
+		print(f'\nQuit: detected [CTRL-C] ')
+		sys.exit(0)
+
 	# Masscan - main mode.
 	if not args.nomasscan:
 		# Args - droptable
@@ -258,9 +268,9 @@ def main():
 		r.console.rule(style='rulecolor')
 
 		# ConfigParser - declare dict values.
-		MSF_MODULES = {k: v for k, v in config['msf-modules'].items()}
+		MSF_VULNSCANS = {k: v for k, v in config['msf-vulnscans'].items()}
 		
-		for k, v in MSF_MODULES.items():
+		for k, v in MSF_VULNSCANS.items():
 			# Skip 'msfmodule scan' if port does not exists in database.
 			targetlst = db.get_ipaddress_by_port(v)
 			if not targetlst:
@@ -312,11 +322,11 @@ def main():
 		r.console.print('All Metasploit scans have completed!', style='scanresult')
 		# Sqlite - write database results to file.
 		write_results('txt', metasploit_dir, \
-			MSF_MODULES, db.get_result_by_msf_vulncheck)
+			MSF_VULNSCANS, db.get_result_by_msf_vulncheck)
 		# Args - parse-ip
 		if args.parse_ip:
 			write_results('ip', metasploit_dir, \
-				MSF_MODULES, db.get_ipaddress_by_msf_vulncheck)
+				MSF_VULNSCANS, db.get_ipaddress_by_msf_vulncheck)
 		print('\n')
 
 	# Nmap - optional mode.
@@ -332,9 +342,9 @@ def main():
 		r.console.rule(style='rulecolor')
 
 		# ConfigParser - declare dict values.
-		NMAP_SCRIPTS = {k: v for k, v in config['nmap-scripts'].items()}
+		NMAP_VULNSCANS = {k: v for k, v in config['nmap-vulnscans'].items()}
 		
-		for k, v in NMAP_SCRIPTS.items():
+		for k, v in NMAP_VULNSCANS.items():
 			# XmlParse - define xml outputfileapth.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
 			# Skip 'msfmodule scan' if port does not exists in database.
@@ -394,11 +404,11 @@ def main():
 		r.console.print('All Nmap scans have completed!', style='scanresult')
 		# Sqlite - write database results to file.
 		write_results('txt', nmap_dir, \
-			NMAP_SCRIPTS, db.get_ipaddress_and_result_by_nse_vulncheck)
+			NMAP_VULNSCANS, db.get_ipaddress_and_result_by_nse_vulncheck)
 		# Args - parse-ip
 		if args.parse_ip:
 			write_results('ip', nmap_dir, \
-				NMAP_SCRIPTS, db.get_ipaddress_by_nse_vulncheck)
+				NMAP_VULNSCANS, db.get_ipaddress_by_nse_vulncheck)
 		print('\n')
 
 	
