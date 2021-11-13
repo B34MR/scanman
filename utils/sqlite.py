@@ -8,7 +8,7 @@ args = arguments.parser.parse_args()
 if args.database:
 	database_file = args.database
 else:
-	database_file = './database.db'
+	database_file = './scanman.db'
 
 # Database init.
 conn = sqlite3.connect(database_file)
