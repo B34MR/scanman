@@ -205,8 +205,9 @@ def main():
 	# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
 	try:
 		if args.ew_report:
-			r.console.print(f'\n[orange_red1]WARNING: All existing contents within the directory "{args.ew_report}" will be overwritten.')
-			input(f'\n[ENTER] to continue / [CTRL-C] to quit...')
+			print(f'\n')
+			logging.warning(f'All Contents will be Overwritten: {args.ew_report}')
+			input(f'[ENTER] to continue / [CTRL-C] to quit...')
 	except KeyboardInterrupt:
 		print(f'\nQuit: detected [CTRL-C] ')
 		sys.exit(0)
@@ -376,8 +377,8 @@ def main():
 						xmlresults = xmlparse.run(xmlfile)
 					except Exception as e:
 						pass
-						print(f'{e}')
-						r.console.print(f'[orange_red1]WARNING: XMLParser failed, vulncheck skipped.')
+						logging.debug(f'ERROR: {e}')
+						logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
 					else:
 						for i in xmlresults:
 							# Omit None type and false positive results for SMB-Signing.

@@ -57,17 +57,18 @@ class NseParser:
 			script = port.find('script')
 			script_id = script.get('id')
 			script_output = script.get('output')
-			logging.debug(f'XMLPARSER:\n{script_output}')
+			logging.info(f'XMLPARSER, GET_SCRIPT(), SCRIPT_OUTPUT: {script_output}')
 			
 			# FTP anonymous access.
 			if script_id == 'ftp-anon':
 				pass
+			else:
+				logging.warning(f'"SCRIPT XMLPARSER template not found: {script_id}"')
 
 		except AttributeError as e:
-			logging.debug(f'{e}')
+			logging.debug(f'XMLPARSER, GET_SCRIPT(), ERROR:{e}')
 			pass
 		else:
-
 			# elem = script_output
 			result = script_id, script_output
 
@@ -79,6 +80,9 @@ class NseParser:
 		Return child elements from 'hostscript'.
 		args(s):host:objstr
 		'''
+
+		# DEV
+		elem = ''
 		
 		# <host><hostscript>
 		hostscript = host.find('hostscript')
@@ -87,7 +91,7 @@ class NseParser:
 			script = hostscript.find('script')
 			script_id = script.get('id')
 			script_output = script.get('output')
-			logging.debug(f'XMLPARSER:\n{script_output}')
+			logging.info(f'XMLPARSER, GET_HOSTSCRIPT(), SCRIPT_OUTPUT: {script_output}')
 			# DEV - Consider breaking this ^ out into seperate func.
 			
 			# DEV - SMBv1
@@ -126,12 +130,20 @@ class NseParser:
 				# <host><hostscript><script><table><elem><elem><elem></elem>
 				elemlst = table.findall('elem')
 				elem = elemlst[1]
+			else:
+				logging.warning(f'"HOSTSCRIPT XMLPARSER template not found: {script_id}"')
 
 		except AttributeError as e:
-			logging.debug(f'{e}')
+			logging.debug(f'XMLPARSER, GET_HOSTSCRIPT(), ERROR: {e}')
 			pass
 		else:
-			result = script_id, script_output, elem.text
+			if elem == '':
+				# DEV
+				# result = script_id, script_output, elem
+				logging.debug(f'XMLPARSER, GET_HOSTSCRIPT(), ELEMENT-TEXT: {None}')
+			else:
+				result = script_id, script_output, elem.text
+				logging.info(f'XMLPARSER, GET_HOSTSCRIPT(), ELEMENT-TEXT: {elem.text}')
 
 			return result
 
