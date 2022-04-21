@@ -107,4 +107,36 @@ class Nmapper:
 			logging.info(f'STDOUT:\n{proc.stdout}')
 			logging.debug(f'STDERR:\n{proc.stderr}')
 
+
+
+class Egress(Nmapper):
+	''' Egress scanner subclass '''
 	
+
+	def __init__(self, ports, target, xmlfile, **kwargs):
+		''' Init arg(s) ports:lst/str, target:str, xmlfile:str '''
+		self.ports = ports
+		self.target = target
+		self.xmlfile = xmlfile
+		self.kwargs = ' '.join([f'{k} {v}' for k, v in kwargs.items()])
+		self.cmd = \
+		f"nmap -Pn -p {self.ports} {self.target} -oX {self.xmlfile} {self.kwargs}"
+
+		
+	def run_scan(self):
+		''' Launch Nmap scan via subprocess wrapper.'''
+		cmdlst = self.cmd.split(' ')
+		try:
+			proc = subprocess.run(cmdlst, 
+				shell=False,
+				check=False,
+				capture_output=True,
+				text=True)
+		except Exception as e:
+			# Set check=True for the exception to catch.
+			logging.exception(e)
+			pass
+		else:
+			# Debug print only.
+			logging.info(f'STDOUT:\n{proc.stdout}')
+			logging.debug(f'STDERR:\n{proc.stderr}')

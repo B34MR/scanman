@@ -27,6 +27,7 @@ scanman_dir = os.path.dirname(__file__)
 # Relative directories and filepaths.
 MAIN_DIR = 'results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
+egress_dir = os.path.join(MAIN_DIR, 'egress')
 ew_dir = os.path.join(MAIN_DIR, 'eyewitness')
 masscan_dir = os.path.join(MAIN_DIR, 'masscan')
 metasploit_dir = os.path.join(MAIN_DIR, 'metasploit')
@@ -40,7 +41,7 @@ ew_xml_filepath = os.path.join(scanman_dir, xml_dir, 'eyewitness.xml')
 targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 
 # Create output dirs.
-directories = [ew_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
+directories = [egress_dir, ew_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -66,22 +67,16 @@ masscan_filepath = masscanner.Masscanner.get_filepath()
 msf_filepath = metasploiter.Metasploiter.get_filepath()
 nmap_filepath = nmapper.Nmapper.get_filepath()
 
-
-def group_kwargs(group_title):
-	'''
-	Argparser func.
-	Return arguments:dict for a specific "Argparse Group". 
-	arg(s) group_title:str '''
-
-	for group in arguments.parser._action_groups:
-	  if group.title == group_title:
-	    group_dict = {a.dest: getattr(args, a.dest, None) for a in group._group_actions}
-	    kwargs = vars(arguments.argparse.Namespace(**group_dict))
-	    logging.info(f'\n{group.title.upper()}:\n{kwargs}')
-
-	    return kwargs
+# Egress - ports to print via STDOUT.
+egress_portlst = [
+'21', '22', '23', '25', '53', '69', '80', '123', '135', 
+'137', '138', '139', '161', '162', '443', '445', '514', 
+'3389', '6660', '6661', '6662', '6663', '6664', '6665', 
+'6666', '6667', '6668', '6669'
+]
 
 
+# DEV - may move to arguments.py
 def remove_key(dictionary, key):
 	''' 
 	Argparser func.
@@ -95,35 +90,6 @@ def remove_key(dictionary, key):
 			raise e
 		else:
 			logging.info(f'REMOVED ARGUMENT: "{key}: {value}"')
-
-# DEV - not currently used.
-def heading_table(masscan_ver, msf_ver,nmap_ver,\
- 	masscan_filepath, msf_filepath, nmap_filepath):
-	''' '''
-	# Variables - title
-	title = f'\n[i grey37] Scanman v1.0'
-
-	# Title 
-	r.console.print(title)
-	r.console.rule(style='rulecolor')
-
-	# Table, toggle "#" to enable Table/Table.grid.
-	table = r.Table.grid()
-	# table = Table()
-
-	# Columns - column headings are hidden in grid view.
-	table.add_column("Software", justify="left", style="cyan", no_wrap=True)
-	table.add_column("Version", justify="left", style="magenta", no_wrap=True)
-	table.add_column("Filepath", justify="left", style="green", no_wrap=True)
-
-	# Rows
-	# table.add_row(" Eyewitness ", " NA ", " /opt/Eyewitness/Python ")
-	table.add_row(" Masscan ", f" {masscan_ver} ", f" {masscan_filepath} ")
-	table.add_row(" Metasploit ", f" {msf_ver} ", f" {msf_filepath} ")
-	table.add_row(" Nmap ", f" {nmap_ver} ", f" {nmap_filepath} ")
-
-	r.console.print(table)
-	r.console.rule(style='rulecolor')
 
 
 def create_targetfile(port, targetfilepath):
@@ -193,8 +159,9 @@ def main():
 	group1_title = 'Masscan Arguments'
 	group2_title = 'Scanman Arguments'
 	group3_title = 'Eyewitness Arguments'
-	# Argparse - return args for a specific "Argparse Group".
-	kwargs = group_kwargs(group1_title)	
+	group4_title = 'Egressscan Arguments'
+	# Argparse - return args for the specific "Argparse Group".
+	kwargs = arguments.group_kwargs('Masscan Arguments')
 	# Argparse - remove 'excludefile' k,v if value is None.
 	remove_key(kwargs, '--excludefile')
 
@@ -348,7 +315,7 @@ def main():
 		for k, v in NMAP_VULNSCANS.items():
 			# XmlParse - define xml outputfileapth.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
-			# Skip 'msfmodule scan' if port does not exists in database.
+			# Skip 'nmap-script scan' if port does not exists in database.
 			targetlst = db.get_ipaddress_by_port(v)
 			if not targetlst:
 				pass
@@ -412,7 +379,6 @@ def main():
 				NMAP_VULNSCANS, db.get_ipaddress_by_nse_vulncheck)
 		print('\n')
 
-	
 	# EyeWitness - optional mode.
 	if args.eyewitness:
 		# Args - ew_report.
@@ -457,6 +423,71 @@ def main():
 		with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS.PY') as status:
 			results = ew.run_scan()
 			print(f'\n{results}')
+
+	# Egress-scan - optional mode.
+	if  args.egressscan:
+
+		# Heading1
+		print('\n')
+		r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
+		r.console.rule(style='rulecolor')
+		
+		# ConfigParser - declare dict values.
+		EGRESS_SCAN = {k: v for k, v in config['egressscan'].items()}
+		egress_ports = EGRESS_SCAN['egress_ports']
+		egress_target = EGRESS_SCAN['egress_target']
+		
+		# Egress - init, print.
+		xmlfile = f'{xml_dir}/egress.xml'
+		egress_file_txt = f'{egress_dir}/egress.txt'
+		egress_file_ip = f'{egress_dir}/egress.ip'
+		nmap_oN = '-oN'
+		kwargs = {nmap_oN: egress_file_txt}
+
+		nm_egress = nmapper.Egress(egress_ports, egress_target, xmlfile, **kwargs)
+		egress_desc = 'Egress-Scan'
+		r.console.print(f'[grey37]{egress_desc.upper()}')
+		print(nm_egress.cmd)
+		# Egress - run.
+		with r.console.status(spinner='bouncingBar', status=f'[status.text]{egress_desc.upper()}') as status:
+			count = 0
+			nm_egress.run_scan()
+
+			# XmlParse - egressparser instance init.
+			xmlparse = xmlparser.EgressParser()
+
+			# XmlParse - read xmlfile and return results to database.
+			try:
+				xmlresults = xmlparse.run(xmlfile)
+			except Exception as e:
+				pass
+				logging.debug(f'ERROR: {e}')
+				logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
+			else:
+				for i in xmlresults:
+					# Print ports from port_lst to STDOUT.
+					for port in egress_portlst:
+						if i[1] == port:
+							if i[3] == 'open':
+								r.console.print(f'[grey37]{i[0]} [white]{i[1]} {i[2].upper()} [red]{i[3].upper()}')
+							else:
+								r.console.print(f'[grey37]{i[0]} {i[1]} {i[2].upper()} {i[3].upper()}')
+					if i[3] == 'open':
+						count +=1
+
+
+				r.console.print(f'\t[grey53]... Truncated ...')
+			r.console.print(f'Instances {count}', style='instances')
+			print('\n')
+
+		r.console.print('All Nmap scans have completed!', style='scanresult')
+		r.console.print(f'Results written to: {egress_file_txt}')
+		# Args - parse-ip
+		if args.parse_ip:
+			with open(egress_file_ip, 'w+') as f1:
+				[f1.write(f'{result[0]}, {result[1]}, {result[2]}\n') for result in xmlresults if result[3] == 'open']	
+				r.console.print(f'Results written to: {f1.name}')
+		print('\n')
 
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
 	for file in os.listdir(masscan_dir):

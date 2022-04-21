@@ -180,26 +180,48 @@ class NseParser:
 		return results
 
 
-# Tested with Nmap version 7.91.
+class EgressParser(NseParser):
+	''' Egress Parser subclass. '''
 
-# DEV - Sample Nmap XML layout with NSE hostscript result.
-# <nmaprun>
-# 	<host starttime="1621772038" endtime="1621772104">
-# 		<status state="up" reason="user-set" reason_ttl="0"/>
-# 		<Address addr='127.0.0.1', addrtype='ipv4/>
 
-# 		<ports>
-# 			<port protocol="tcp" portid="445">
-# 				<state state='open' reason="reset" reason_ttl="128"/>
-# 				<service name="microsoft-ds" method="table" conf="3"/>
-# 			</port>
-# 		</ports>
+	def get_name(self, host):
+		''' 
+		Return 'name' element from 'host'.
+		arg(s):host:objstr 
+		'''
 
-# 		<hostscript>
-#			<script id='smb2-security-mode', output='&#xa;2.02:&#xa;Message signing enabled but not required'>	
-#				<table key="2.02">
-#					<elem>Message signing enabled but not required</elem>
-#				</table>
-# 			</script>
-#		</hostscript>
-#	</host>
+		# <hostnames><hostname name="letmeoutofyour.net" type="user"/>
+		hostnames = host.find('hostnames')
+		hostname = hostnames.find('hostname')
+		name = hostname.get('name')
+
+		return name
+
+
+	def run(self, filepath):
+		''' 
+		Read Nmap NSE XML (oX) output file and return the final results.
+		arg(s):filepath:str
+		'''
+
+		results = []
+		# XmlParser - read xml file and parse.
+		root = self.parse_xml(filepath)
+		# XmlParser - obtain hosts:lst from xml file.
+		hosts = self.get_hosts()
+
+		# XmlParser - obtain ipaddress(es) and nsescript scan result(s) from hosts:lst.
+		for host in hosts:
+			name = self.get_name(host)
+
+			# <host><ports><port protocol="tcp" portid="2">
+			ports = host.find('ports')
+			for port in ports:
+				# Exclude ports with no portid, I.e scan with no results.
+				if port.get('portid') is not None:
+					# name:letmeoutofyour.net portid:21, portocol:TCP, state:OPEN.
+					result = (name, port.get('portid'), \
+						port.get('protocol'), port.find('state').get('state'))
+					results.append(result)
+		
+		return results
