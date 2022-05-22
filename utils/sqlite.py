@@ -18,6 +18,73 @@ c = conn.cursor()
 c.row_factory = sqlite3.Row
 
 
+
+# DomainController
+def create_table_domaincontroller():
+	''' Create table domaincontroller '''
+
+	try:
+		with conn:
+			c.execute("""CREATE TABLE DomainController(
+				domain text,
+				fqdn text,
+				hostname text,
+				ipaddress text,
+				vulncheck text,
+				result text
+				)""")
+	except sqlite3.OperationalError:
+		pass
+
+# DomainController
+def insert_domaincontroller(domain, fqdn, hostname, ipaddress, vulncheck, result):
+	''' Insert result [(Domain, FQDN, IPAddress, Vulncheck, Result)] '''
+	
+	with conn:
+		c.execute("INSERT INTO domaincontroller VALUES (:domain, :fqdn, :hostname, :ipaddress, :vulncheck, :result)",
+		 {'domain' :domain, 'fqdn' :fqdn, 'hostname':hostname, 'ipaddress' :ipaddress, 'vulncheck' :vulncheck, 'result': result})
+
+# DomainController
+def get_fqdn_by_domain(domain):
+	''' Get hostname column by filtering the domain value.'''
+
+	c.execute("SELECT fqdn FROM domaincontroller WHERE domain=:domain", {'domain': domain})
+	
+	return  {f"{dic['fqdn']}" for dic in c.fetchall()}
+
+# DomainController
+def get_ipaddress_by_domain(domain):
+	''' Get ipaddress column by filtering the domain value.'''
+
+	c.execute("SELECT ipaddress FROM domaincontroller WHERE domain=:domain", {'domain': domain})
+	
+	return  {f"{dic['ipaddress']}" for dic in c.fetchall()}
+
+# DomainController
+def get_fqdn_and_ipaddress_by_domain(domain):
+	''' Get fqdn, ipaddress column by filtering the domain value.'''
+
+	c.execute("SELECT fqdn, ipaddress FROM domaincontroller WHERE domain=:domain", {'domain': domain})
+	
+	return  {f"{dic['fqdn']} {dic['ipaddress']}" for dic in c.fetchall()}
+
+# DomainController
+def get_hostname_and_ipaddress_by_domain(domain):
+	''' Get hostname, ipaddress column by filtering the domain value.'''
+
+	c.execute("SELECT hostname, ipaddress FROM domaincontroller WHERE domain=:domain", {'domain': domain})
+	
+	return  {f"{dic['hostname']} {dic['ipaddress']}" for dic in c.fetchall()}
+
+# DomainController
+def get_domaincontroller_column(column):
+	''' Get domaincontroller column.'''
+
+	c.execute(f"SELECT {column} FROM domaincontroller")
+	
+	return  {f"{dic[column]}" for dic in c.fetchall()}
+
+
 # Masscan
 def create_table_masscan():
 	''' Create table masscan '''
@@ -144,8 +211,33 @@ def get_ipaddress_and_result_by_nse_vulncheck(vulncheck):
 	return {f"{dic['ipaddress']} {dic['result']}" for dic in c.fetchall()}
 
 
+# General
+def get_tables():
+	''' Get a list of tables in the database.'''
+
+	tables = []
+
+	res = c.execute("SELECT name FROM sqlite_master WHERE type='table';")
+	for name in res.fetchall():
+		tables.append(name[0])
+		
+	return tables
+
+# General
+def get_table_row_count(tablename):
+	''' Get row count from table.'''
+
+	row_count = []
+
+	res = c.execute(f"SELECT count(*) FROM {tablename}")
+	for rows in res.fetchall():
+		row_count.append(rows[0])
+		
+	return row_count
+
+# General
 def drop_table(tablename):
-	''' Drop table '''
+	''' Drop table. '''
 	
 	try:
 		with conn:

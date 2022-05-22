@@ -2,10 +2,12 @@
 
 from utils import arguments
 from utils import ewrapper
+from utils import getdc
 from utils import metasploiter
 from utils import masscanner
 from utils import mkdir
 from utils import nmapper
+from utils import nullsession
 from utils import richard as r
 from utils import sqlite as db
 from utils import xmlparser
@@ -27,6 +29,7 @@ scanman_dir = os.path.dirname(__file__)
 # Relative directories and filepaths.
 MAIN_DIR = 'results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
+dc_dir = os.path.join(MAIN_DIR, 'dc')
 egress_dir = os.path.join(MAIN_DIR, 'egress')
 ew_dir = os.path.join(MAIN_DIR, 'eyewitness')
 masscan_dir = os.path.join(MAIN_DIR, 'masscan')
@@ -41,7 +44,7 @@ ew_xml_filepath = os.path.join(scanman_dir, xml_dir, 'eyewitness.xml')
 targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 
 # Create output dirs.
-directories = [egress_dir, ew_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
+directories = [dc_dir, egress_dir, ew_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -127,10 +130,9 @@ def write_results(file_ext, directory, dictionary, dbquery):
 		if results != [] and results != set():
 			# Debug - print.
 			# print(results)
-			logging.info(f'Found results in databse.db:')
 			with open(filepath, 'w+') as f1:
 				[f1.write(f'{result}\n') for result in results]
-				r.console.print(f'Results written to: {f1.name}')
+				r.console.print(f'Results from db written to: {f1.name}')
 
 
 def sort_ipaddress(filepath):
@@ -152,6 +154,26 @@ def sort_ipaddress(filepath):
 				f2.write(f'{ip}\n')
 
 
+def sort_alphabetical(filepath):
+	''' 
+	Sort files alphabetically from a file.
+	arg(s)filepath:str '''
+	
+	# Patch < - fixed issue after introducing .stdout file extensions.
+	filename, file_ext = os.path.splitext(filepath)
+	if file_ext == '.fqdn' \
+	or file_ext == '.fqdnip'\
+	or file_ext == '.zerologon': 
+		# Patch />.		
+		# Read file and gather IP addresses.
+		with open(filepath, 'r') as f1:
+			lines = [line for line in f1]
+		# Write file with alphabetically sorted and #DEV - 'unique' data. 
+		with open(filepath, 'w+') as f2:
+			for line in sorted(lines):
+				f2.write(f'{line}')
+
+
 def main():
 	''' Main Func '''
 
@@ -159,7 +181,7 @@ def main():
 	group1_title = 'Masscan Arguments'
 	group2_title = 'Scanman Arguments'
 	group3_title = 'Eyewitness Arguments'
-	group4_title = 'Egressscan Arguments'
+	group4_title = 'GetDomainController Arguments'
 	# Argparse - return args for the specific "Argparse Group".
 	kwargs = arguments.group_kwargs('Masscan Arguments')
 	# Argparse - remove 'excludefile' k,v if value is None.
@@ -168,6 +190,23 @@ def main():
 	# ConfigParser - clear config cache and read newconfig file.
 	config.clear()
 	config.read(scanman_config)
+
+	# Args - listtables
+	r.console.print(f'Database: {db.database_file}')
+	if args.listtables:
+		tables = db.get_tables()
+		count = 0
+		for table in tables:
+			count +=1
+			row_count = db.get_table_row_count(table)
+			r.console.print(f'{count}. {table}, rows: {row_count}')
+
+	# Args - droptables
+	if args.droptables:
+		tables = db.get_tables()
+		for table in tables:
+			db.drop_table(f'{table}')
+			logging.warning(f'Dropped Database table: {db.database_file}.{table}')
 
 	# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
 	try:
@@ -179,11 +218,76 @@ def main():
 		print(f'\nQuit: detected [CTRL-C] ')
 		sys.exit(0)
 
-	# Masscan - main mode.
-	if not args.nomasscan:
+	# GetDomainController - mode.
+	if args.domain:
+		# DEV - version
+		getdc_version = f'1.0'
+		count = 0
 		# Args - droptable
-		if args.droptable:
-			db.drop_table('Masscan')
+		# if args.droptable:
+		# 	db.drop_table('DomainController')
+		# 	logging.warning(f'Dropped Database table: {db.database_file}.DomainController')
+		# Sqlite - database init.
+		db.create_table_domaincontroller()
+
+		# Heading1
+		print('\n')
+		r.console.print(f'GetDomainController {getdc_version}', style='appheading')
+		r.console.rule(style='rulecolor')
+
+		# Hostname dictionary
+		host_dct = {
+		}
+
+		# DNS query for domain controllers and populate 'host_dct' with results.
+		for domain in args.domain:
+			with r.console.status(spinner='bouncingBar', status=f'[status.text]{domain.upper()}') as status:
+				# initiate nested dict(s) from args.domain
+				host_dct[domain] = {}
+				# call query(srv) to find dc hostname
+				answer_srv = getdc.query(domain, service='_kerberos.', protocol='_tcp.',\
+					recordtype='SRV', nameserver=args.nameserver)			
+				for hostname in answer_srv:
+					# populate host_dct with hostname.
+					host_dct[domain][str(hostname)] = ''
+					 # call query(a) to find dc ipaddress
+					answer_a = getdc.query(hostname, service='', protocol='',\
+						recordtype='A', nameserver=args.nameserver)
+					# convert list to string
+					ipaddress = '\n'.join(answer_a)
+					# populate host_dct with ipaddress
+					host_dct[domain][str(hostname)] = ipaddress
+
+		# Read results from 'host_dct', populate database.
+		for domain in host_dct.keys():
+			r.console.print(f'[grey37]{domain.upper()}')
+			for k, v in host_dct[domain].items():
+				hostname = k.split(".")[0]
+				db.insert_domaincontroller(domain, k, hostname, v, vulncheck='', result='')
+				# Print results.
+				r.console.print(f'{k} {v}')
+
+		# Instance counter.
+		for domain in host_dct.keys():
+			for key in sorted(host_dct[domain].keys()):
+				count +=1
+		r.console.print(f'Instances {count}', style='instances')
+		print('\n')
+		r.console.print('All scans have completed!', style="scanresult")
+		r.console.print(f'Updated Database table: {db.database_file}.DomainController')
+
+		# Sqlite - write db results to file.
+		write_results('fqdn', dc_dir, host_dct, db.get_fqdn_by_domain)
+		write_results('ip', dc_dir, host_dct, db.get_ipaddress_by_domain)
+		write_results('fqdnip', dc_dir, host_dct, db.get_fqdn_and_ipaddress_by_domain)
+		write_results('zerologon', dc_dir, host_dct, db.get_hostname_and_ipaddress_by_domain)
+
+	# Masscan - main mode.
+	if not args.nomass:
+		# Args - droptable
+		# if args.droptable:
+		# 	db.drop_table('Masscan')
+		# 	logging.warning(f'Dropped Database table: {db.database_file}.Masscan')
 		# Sqlite - database init.
 		db.create_table_masscan()
 
@@ -214,6 +318,7 @@ def main():
 				r.console.print(f'Instances {count}', style='instances')
 				print('\n')
 		r.console.print('All Masscans have completed!', style="scanresult")
+		r.console.print(f'Updated Database table: {db.database_file}.Masscan')
 			
 		# Sqlite - write db results to file.
 		write_results('txt', masscan_dir, \
@@ -226,8 +331,9 @@ def main():
 	# Metasploit - optional mode.
 	if args.msf:		
 		# Args - droptable
-		if args.droptable:
-			db.drop_table('Metasploit')
+		# if args.droptable:
+		# 	db.drop_table('Metasploit')
+		# 	logging.warning(f'Dropped Database table: {db.database_file}.Metasploit')
 		# Sqlite - database init.
 		db.create_table_metasploit()
 
@@ -244,7 +350,7 @@ def main():
 			if not targetlst:
 				pass
 				r.console.print(f'{os.path.basename(k.upper())}', style='scancolor')
-				r.console.print(f'No Targets found for port: {v}', style='notarget')
+				r.console.print(f'No targets in db found with port: {v}', style='notarget')
 				r.console.print(f'Skipped', style='skipcolor')
 				print('\n')
 			else:
@@ -288,6 +394,7 @@ def main():
 					print('\n')
 
 		r.console.print('All Metasploit scans have completed!', style='scanresult')
+		r.console.print(f'Updated Database table: {db.database_file}.Metasploit')
 		# Sqlite - write database results to file.
 		write_results('txt', metasploit_dir, \
 			MSF_VULNSCANS, db.get_result_by_msf_vulncheck)
@@ -300,8 +407,9 @@ def main():
 	# Nmap - optional mode.
 	if args.nmap:
 		# Args - droptable
-		if args.droptable:
-			db.drop_table('Nmap')
+		# if args.droptable:
+		# 	db.drop_table('Nmap')
+		# 	logging.warning(f'Dropped Database table: {db.database_file}.Nmap')
 		# Sqlite - databse init.
 		db.create_table_nmap()
 
@@ -320,7 +428,7 @@ def main():
 			if not targetlst:
 				pass
 				r.console.print(f'{k.upper()}', style='scancolor')
-				r.console.print(f'No Targets found for port: {v}', style='notarget')
+				r.console.print(f'No targets in db found with port: {v}', style='notarget')
 				r.console.print(f'Skipped', style='skipcolor')
 				print('\n')
 			else:
@@ -370,6 +478,7 @@ def main():
 					print('\n')
 
 		r.console.print('All Nmap scans have completed!', style='scanresult')
+		r.console.print(f'Updated Database table: {db.database_file}.Nmap')
 		# Sqlite - write database results to file.
 		write_results('txt', nmap_dir, \
 			NMAP_VULNSCANS, db.get_ipaddress_and_result_by_nse_vulncheck)
@@ -498,6 +607,12 @@ def main():
 	# Sort / unique ip addresses from files in the 'nmap' dir.
 	for file in os.listdir(nmap_dir):
 		sort_ipaddress(os.path.join(nmap_dir, file))
+	# Sort / unique ip addresses from files in the 'dc' dir.
+	for file in os.listdir(dc_dir):
+		sort_ipaddress(os.path.join(dc_dir, file))
+	# Sort data alphabetically from files in the 'dc' dir.
+	for file in os.listdir(dc_dir):
+		sort_alphabetical(os.path.join(dc_dir, file))
 
 
 if __name__ == '__main__':

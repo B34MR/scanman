@@ -10,16 +10,20 @@ custom_usage = """
   
 Scanman
 --------------------------------------------------\n
+Configuration File:
+  For more options, see: configs/config.ini.
+
 Usage Examples: 
   python3 scanman.py -iL /path/to/targetfile.txt
   python3 scanman.py -iL /path/to/targetfile.txt --msf
   python3 scanman.py -iL /path/to/targetfile.txt --nmap
-  python3 scanman.py -iL /path/to/targetfile.txt --eyewitness
-  python3 scanman.py -iL /path/to/targetfile.txt --excludefile /path/to/excludefile.txt
-  python3 scanman.py -iL /path/to/targetfile.txt --database /path/to/database.db
+  python3 scanman.py --no-mass --domain contoso.local
+  python3 scanman.py --no-mass --egress
+  python3 scanman.py --no-mass --eyewitness
+
 
 Typical Usage:
-  python3 scanman.py -iL /path/to/targetfile.txt -m -n -ew -eg --ipparse --smbparse
+  python3 scanman.py -iL [TARGETFILE] -d [DOMAIN] -m -n -eg --ew --ipparse --smbparse
   
 """
 
@@ -59,7 +63,7 @@ def group_kwargs(group_title):
 
 # Group1 Options.
 group1 = parser.add_argument_group('Masscan Arguments')
-group1.add_argument('-iL', '--inputlist', dest='-iL', type=str, required=False, help='Input from list of hosts/networks')
+group1.add_argument('-iL', '--inputlist', dest='-iL', type=str, required=False, help='Input from list of ips/networks. *Hostnames not supported')
 group1.add_argument('-eL', '--excludefile', dest='--excludefile', type=str, required=False, default=None, help='Exclude list from file')
 group1.add_argument('-i', '--interface', dest='-i', type=str, required=False, default='eth0', help='Network Adapter interface')
 group1.add_argument('-r', '--rate', dest='--rate', type=str, required=False, default='250', help="Masscan's rate in kpps")
@@ -68,31 +72,35 @@ group1.add_argument('-r', '--rate', dest='--rate', type=str, required=False, def
 group2 = parser.add_argument_group('Scanman Arguments')
 group2.add_argument('-m', '--msf', dest='msf', action='store_true', help='Enable MSF Vulnscans.')
 group2.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Enable Nmap Vulnscans.')
-group2.add_argument('-ew', '--eyewitness', dest='eyewitness', action='store_true', help='Enable Eyewitness scans.')
-group2.add_argument('-db', '--database', dest='database', default='.scanman.db', metavar='' , help='Filepath for database.')
-group2.add_argument('--no-masscan', dest='nomasscan', action='store_true', help='Disable Masscan portscans.')
+group2.add_argument('-eg', '--egress', dest='egressscan', action='store_true', help='Enable Egress-scan.')
+group2.add_argument('-ew', '--eyewitness', dest='eyewitness', action='store_true', help='Enable Eyewitness /w portscans.')
+group2.add_argument('-db', '--database', dest='database', default='.scanman.db', metavar='' , help='Filepath for Scanman database.')
+group2.add_argument('--no-mass', dest='nomass', action='store_true', help='Disable Masscan portscans.')
 group2.add_argument('--ipparse', dest='parse_ip', action='store_true', help='Enable ipaddress parsing.')
 group2.add_argument('--smbparse', dest='smbparse', action='store_true', help='Parse out false positives for smb-signing.')
-group2.add_argument('--droptables', dest='droptable', action='store_true', help='Drop existing database tables.')
+# group2.add_argument('--droptable', dest='droptable', type=str, help='Drop specific database table.')
+group2.add_argument('--droptables', dest='droptables', action='store_true', help='Drop all database tables.')
+group2.add_argument('--listtables', dest='listtables', action='store_true', help='List all database tables.')
 group2.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['DEBUG', 'INFO', 'WARNING'], help='Set logging level')
 
 # Group3 Options.
 group3 = parser.add_argument_group('Eyewitness Arguments')
-group3.add_argument('-ewr', '--ew-report', dest='ew_report', type=str, required=False, metavar='', help='Eyewitness report output directory.')
+group3.add_argument('-ewr', '--ew-report', dest='ew_report', type=str, required=False, metavar='', help='Destination Eyewitness report directory.')
 
 # Group4 Options.
-group4 = parser.add_argument_group('Egressscan Arguments')
-group4.add_argument('-eg', '--egress', dest='egressscan', action='store_true', help='Enable Egress-scan.')
+group4 = parser.add_argument_group('GetDomainController Arguments')
+group4.add_argument('-d', '--domain', dest='domain', type=str, help='Provide DomainName(s). *Automatically enables GetDC.', nargs='+')
+group4.add_argument('-ns', '--nameserver', dest='nameserver', type=str, required=False, metavar='', help='Nameserver')
 
 # Argparse - return kwargs for the specific "Argparse Group".
 masscan_kwargs = group_kwargs('Masscan Arguments')
 
 # Argparse - verify that the required '-iL' arg is used when applicable (I.e -m, -n, -e).
-args = parser.parse_args()
-if args.msf or args.nmap or args.eyewitness is None:
-  if masscan_kwargs['-iL'] is None:
-    print('The following arguments are required: -iL/--inputlist')
-    sys.exit(1)
+# args = parser.parse_args()
+# if args.msf is None or args.nmap is None or args.eyewitness is None:
+#   if masscan_kwargs['-iL'] is None:
+#     print('The following arguments are required: -iL/--inputlist')
+#     sys.exit(1)
 
 # Print 'help' if no options are defined.
 if len(sys.argv) == 1:
