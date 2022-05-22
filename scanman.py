@@ -7,7 +7,7 @@ from utils import metasploiter
 from utils import masscanner
 from utils import mkdir
 from utils import nmapper
-from utils import nullsession
+# from utils import nullsession
 from utils import richard as r
 from utils import sqlite as db
 from utils import xmlparser
