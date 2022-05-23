@@ -216,7 +216,6 @@ def get_tables():
 	''' Get a list of tables in the database.'''
 
 	tables = []
-
 	res = c.execute("SELECT name FROM sqlite_master WHERE type='table';")
 	for name in res.fetchall():
 		tables.append(name[0])
@@ -228,7 +227,6 @@ def get_table_row_count(tablename):
 	''' Get row count from table.'''
 
 	row_count = []
-
 	res = c.execute(f"SELECT count(*) FROM {tablename}")
 	for rows in res.fetchall():
 		row_count.append(rows[0])

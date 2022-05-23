@@ -183,9 +183,9 @@ def main():
 	group3_title = 'Eyewitness Arguments'
 	group4_title = 'GetDomainController Arguments'
 	# Argparse - return args for the specific "Argparse Group".
-	kwargs = arguments.group_kwargs('Masscan Arguments')
+	masscan_kwargs = arguments.group_kwargs('Masscan Arguments')
 	# Argparse - remove 'excludefile' k,v if value is None.
-	remove_key(kwargs, '--excludefile')
+	remove_key(masscan_kwargs, '--excludefile')
 
 	# ConfigParser - clear config cache and read newconfig file.
 	config.clear()
@@ -206,7 +206,7 @@ def main():
 		tables = db.get_tables()
 		for table in tables:
 			db.drop_table(f'{table}')
-			logging.warning(f'Dropped Database table: {db.database_file}.{table}')
+			logging.warning(f'Dropped database table: {db.database_file}.{table}')
 
 	# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
 	try:
@@ -220,15 +220,12 @@ def main():
 
 	# GetDomainController - mode.
 	if args.domain:
+		# Sqlite - database init.
+		db.create_table_domaincontroller()
+
 		# DEV - version
 		getdc_version = f'1.0'
 		count = 0
-		# Args - droptable
-		# if args.droptable:
-		# 	db.drop_table('DomainController')
-		# 	logging.warning(f'Dropped Database table: {db.database_file}.DomainController')
-		# Sqlite - database init.
-		db.create_table_domaincontroller()
 
 		# Heading1
 		print('\n')
@@ -274,20 +271,17 @@ def main():
 		r.console.print(f'Instances {count}', style='instances')
 		print('\n')
 		r.console.print('All scans have completed!', style="scanresult")
-		r.console.print(f'Updated Database table: {db.database_file}.DomainController')
+		r.console.print(f'Updated database table: {db.database_file}.DomainController')
 
 		# Sqlite - write db results to file.
 		write_results('fqdn', dc_dir, host_dct, db.get_fqdn_by_domain)
 		write_results('ip', dc_dir, host_dct, db.get_ipaddress_by_domain)
 		write_results('fqdnip', dc_dir, host_dct, db.get_fqdn_and_ipaddress_by_domain)
 		write_results('zerologon', dc_dir, host_dct, db.get_hostname_and_ipaddress_by_domain)
+		print('\n')
 
 	# Masscan - main mode.
-	if not args.nomass:
-		# Args - droptable
-		# if args.droptable:
-		# 	db.drop_table('Masscan')
-		# 	logging.warning(f'Dropped Database table: {db.database_file}.Masscan')
+	if not masscan_kwargs['-iL'] is None:
 		# Sqlite - database init.
 		db.create_table_masscan()
 
@@ -303,7 +297,7 @@ def main():
 		for key, value in MASSCAN_PORTSCANS.items():
 
 			# Masscanner - init, print and run scan.
-			ms = masscanner.Masscanner(key, value, **kwargs)
+			ms = masscanner.Masscanner(key, value, **masscan_kwargs)
 			r.console.print(f'[grey37]{key.upper()}')
 			print(ms.cmd)
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]{key.upper()}') as status:
@@ -318,7 +312,7 @@ def main():
 				r.console.print(f'Instances {count}', style='instances')
 				print('\n')
 		r.console.print('All Masscans have completed!', style="scanresult")
-		r.console.print(f'Updated Database table: {db.database_file}.Masscan')
+		r.console.print(f'Updated database table: {db.database_file}.Masscan')
 			
 		# Sqlite - write db results to file.
 		write_results('txt', masscan_dir, \
@@ -330,10 +324,6 @@ def main():
 
 	# Metasploit - optional mode.
 	if args.msf:		
-		# Args - droptable
-		# if args.droptable:
-		# 	db.drop_table('Metasploit')
-		# 	logging.warning(f'Dropped Database table: {db.database_file}.Metasploit')
 		# Sqlite - database init.
 		db.create_table_metasploit()
 
@@ -394,7 +384,7 @@ def main():
 					print('\n')
 
 		r.console.print('All Metasploit scans have completed!', style='scanresult')
-		r.console.print(f'Updated Database table: {db.database_file}.Metasploit')
+		r.console.print(f'Updated database table: {db.database_file}.Metasploit')
 		# Sqlite - write database results to file.
 		write_results('txt', metasploit_dir, \
 			MSF_VULNSCANS, db.get_result_by_msf_vulncheck)
@@ -406,10 +396,6 @@ def main():
 
 	# Nmap - optional mode.
 	if args.nmap:
-		# Args - droptable
-		# if args.droptable:
-		# 	db.drop_table('Nmap')
-		# 	logging.warning(f'Dropped Database table: {db.database_file}.Nmap')
 		# Sqlite - databse init.
 		db.create_table_nmap()
 
@@ -478,7 +464,7 @@ def main():
 					print('\n')
 
 		r.console.print('All Nmap scans have completed!', style='scanresult')
-		r.console.print(f'Updated Database table: {db.database_file}.Nmap')
+		r.console.print(f'Updated database table: {db.database_file}.Nmap')
 		# Sqlite - write database results to file.
 		write_results('txt', nmap_dir, \
 			NMAP_VULNSCANS, db.get_ipaddress_and_result_by_nse_vulncheck)
@@ -516,8 +502,8 @@ def main():
 		# Masscanner - init, print and run scan.
 		
 		# Masscanner - add new 'oX' k, v pair.
-		kwargs['-oX'] = ew_xml_filepath
-		ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **kwargs)
+		masscan_kwargs['-oX'] = ew_xml_filepath
+		ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **masscan_kwargs)
 		# Masscanner - print cmd and run scan.
 		r.console.print(f'[grey37]EYEWITNESS-PORTSCAN')
 		print(f'{ms_ew.cmd}')
@@ -535,7 +521,6 @@ def main():
 
 	# Egress-scan - optional mode.
 	if  args.egressscan:
-
 		# Heading1
 		print('\n')
 		r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
@@ -551,9 +536,9 @@ def main():
 		egress_file_txt = f'{egress_dir}/egress.txt'
 		egress_file_ip = f'{egress_dir}/egress.ip'
 		nmap_oN = '-oN'
-		kwargs = {nmap_oN: egress_file_txt}
+		egress_kwargs = {nmap_oN: egress_file_txt}
 
-		nm_egress = nmapper.Egress(egress_ports, egress_target, xmlfile, **kwargs)
+		nm_egress = nmapper.Egress(egress_ports, egress_target, xmlfile, **egress_kwargs)
 		egress_desc = 'Egress-Scan'
 		r.console.print(f'[grey37]{egress_desc.upper()}')
 		print(nm_egress.cmd)
