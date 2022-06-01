@@ -75,16 +75,14 @@ group2.add_argument('-n', '--nmap', dest='nmap', action='store_true', help='Enab
 group2.add_argument('-eg', '--egress', dest='egressscan', action='store_true', help='Enable Egress-scan.')
 group2.add_argument('-ew', '--eyewitness', dest='eyewitness', action='store_true', help='Enable Eyewitness /w portscans.')
 group2.add_argument('-db', '--database', dest='database', default='.scanman.db', metavar='' , help='Filepath for Scanman database.')
+group2.add_argument('--droptables', dest='droptables', action='store_true', help='Drop all database tables.')
 group2.add_argument('--ipparse', dest='parse_ip', action='store_true', help='Enable ipaddress parsing.')
 group2.add_argument('--smbparse', dest='smbparse', action='store_true', help='Parse out false positives for smb-signing.')
-# group2.add_argument('--droptable', dest='droptable', type=str, help='Drop specific database table.')
-group2.add_argument('--droptables', dest='droptables', action='store_true', help='Drop all database tables.')
-group2.add_argument('--listtables', dest='listtables', action='store_true', help='List all database tables.')
 group2.add_argument('--loglevel', dest='loglevel', type=str.upper, default='WARNING', choices=['DEBUG', 'INFO', 'WARNING'], help='Set logging level')
 
 # Group3 Options.
 group3 = parser.add_argument_group('Eyewitness Arguments')
-group3.add_argument('-ewr', '--ew-report', dest='ew_report', type=str, required=False, metavar='', help='Destination Eyewitness report directory.')
+group3.add_argument('-ewr', '--ewreport', dest='ew_report', type=str, required=False, metavar='', help='Eyewitness report output directory.')
 
 # Group4 Options.
 group4 = parser.add_argument_group('GetDomainController Arguments')

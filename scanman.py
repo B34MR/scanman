@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from utils import arguments
+from utils import dbmanager
 from utils import ewrapper
 from utils import getdc
 from utils import metasploiter
@@ -191,32 +192,23 @@ def main():
 	config.clear()
 	config.read(scanman_config)
 
-	# Args - listtables
-	r.console.print(f'Database: {db.database_file}')
-	if args.listtables:
-		tables = db.get_tables()
-		count = 0
-		for table in tables:
-			count +=1
-			row_count = db.get_table_row_count(table)
-			r.console.print(f'{count}. {table}, rows: {row_count}')
-
 	# Args - droptables
 	if args.droptables:
-		tables = db.get_tables()
-		for table in tables:
-			db.drop_table(f'{table}')
-			logging.warning(f'Dropped database table: {db.database_file}.{table}')
+		dbmanager.menu_option_droptables()
 
 	# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
 	try:
 		if args.ew_report:
 			print(f'\n')
-			logging.warning(f'All Contents will be Overwritten: {args.ew_report}')
-			input(f'[ENTER] to continue / [CTRL-C] to quit...')
+			r.console.print(f'[orange_red1]:large_orange_diamond: WARNING :large_orange_diamond:')
+			r.console.print(f'All Contents will be Overwritten: {args.ew_report}')
+			input(f'[CTRL-C] to quit / [ENTER] to scan: ')
 	except KeyboardInterrupt:
 		print(f'\nQuit: detected [CTRL-C] ')
 		sys.exit(0)
+
+	# Database-manager Menu.
+	dbmanager.menu()
 
 	# GetDomainController - mode.
 	if args.domain:
