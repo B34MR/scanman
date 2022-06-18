@@ -47,7 +47,6 @@ def menu_option_droptables():
 
 def menu_status_good():
 	r.console.print(f'Database: [repr.path]{db.database_file}')
-	r.console.print('No existing entries were found in the database.')
 	r.console.print('\n:beers: Ready to scanman :beers:')
 
 
@@ -60,9 +59,7 @@ def menu_status_bad():
 
 
 def menu_status_all_tables_dropped():
-	r.console.print('\nNo existing tables are left in the database.')
-	r.console.print(':v: Peace')
-	sys.exit(0)
+	r.console.print('No existing tables are left in the database.')
 
 
 def build_submenu_options():
@@ -124,13 +121,16 @@ def menu():
 							menu_option_quit()
 						elif submenu_options[option_key] == 'All Tables':
 							menu_option_droptables()
-							if not db.get_tables(): menu_status_all_tables_dropped()
+							if not db.get_tables():
+								menu_status_all_tables_dropped()
+								break
 						elif option_key != '':
 							db.drop_table(submenu_options[option_key])
 							r.console.print(f'\n')
 							r.console.print(f'Dropped: [grey37]{submenu_options[option_key]}')
-							r.console.print(f'\n')
-							if not db.get_tables(): menu_status_all_tables_dropped()
+							if not db.get_tables():
+								menu_status_all_tables_dropped()
+								break
 						else:
 							menu_option_invalid()
 			else:

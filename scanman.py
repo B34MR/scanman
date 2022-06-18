@@ -82,8 +82,7 @@ egress_portlst = [
 
 # DEV - may move to arguments.py
 def remove_key(dictionary, key):
-	''' 
-	Argparser func.
+	''' Argparser func.
 	Remove dictionary key if value is None.
 	arg(s) dictionary:dict, key:str '''
 
@@ -97,8 +96,7 @@ def remove_key(dictionary, key):
 
 
 def create_targetfile(port, targetfilepath):
-	'''
-	Fetch target ipaddresses from db by filtering the port 
+	''' Fetch target ipaddresses from db by filtering the port 
 	then write results to a flatfile.
 	arg(s)port:str, targetfilepath:str '''
 	
@@ -109,9 +107,21 @@ def create_targetfile(port, targetfilepath):
 		logging.info(f'Targets written to: {f1.name}')
 
 
+def keyboard_interrupt():
+	''' Menu and stdout for Ctrl-C '''
+
+	r.console.print(f'\nCtrl-C detected, the current scan was skipped.')
+	option = input('(Q)uit / [ENTER] to proceed with next scan: ')
+	if option.upper() == '':
+		r.console.print(f'\n')
+		pass
+	elif option.upper() == 'Q':
+		r.console.print(':v: Peace')
+		sys.exit(0)
+
+
 def remove_ansi(string):
-	'''
-	Remove ANSI escape sequences from a string.
+	''' Remove ANSI escape sequences from a string.
 	arg(s):string:str'''
 	
 	reaesc = re.compile(r'\x1b[^m]*m')
@@ -121,8 +131,7 @@ def remove_ansi(string):
 
 
 def write_results(file_ext, directory, dictionary, dbquery):
-	''' 
-	Write database results to a flatfile. 
+	''' Write database results to a flatfile. 
 	arg(s)file_ext:str, dictionary:dict, directory:str, dbquery:funcobj '''
 
 	for k, v in dictionary.items():
@@ -137,8 +146,7 @@ def write_results(file_ext, directory, dictionary, dbquery):
 
 
 def sort_ipaddress(filepath):
-	''' 
-	Sort and unique IP addresses from a file.
+	''' Sort and unique IP addresses from a file.
 	arg(s)filepath:str '''
 	
 	# Patch < - fixed issue after introducing .stdout file extensions.
@@ -156,8 +164,7 @@ def sort_ipaddress(filepath):
 
 
 def sort_alphabetical(filepath):
-	''' 
-	Sort files alphabetically from a file.
+	''' Sort files alphabetically from a file.
 	arg(s)filepath:str '''
 	
 	# Patch < - fixed issue after introducing .stdout file extensions.
@@ -214,16 +221,12 @@ def main():
 	if args.domain:
 		# Sqlite - database init.
 		db.create_table_domaincontroller()
-
 		# DEV - version
 		getdc_version = f'1.0'
-		count = 0
-
 		# Heading1
 		print('\n')
 		r.console.print(f'GetDomainController {getdc_version}', style='appheading')
 		r.console.rule(style='rulecolor')
-
 		# Hostname dictionary
 		host_dct = {
 		}
@@ -255,16 +258,18 @@ def main():
 				db.insert_domaincontroller(domain, k, hostname, v, vulncheck='', result='')
 				# Print results.
 				r.console.print(f'{k} {v}')
-
+			r.console.print(f'Updated database table: {db.database_file}.DomainController\n', style='instances')
+		
+		# DEV - counter breaks with multiple domains.
 		# Instance counter.
+		count = 0
 		for domain in host_dct.keys():
 			for key in sorted(host_dct[domain].keys()):
 				count +=1
-		r.console.print(f'Instances {count}', style='instances')
-		print('\n')
+		r.console.print(f'Instances {count}\n', style='instances')
+		
+		# Print successful scan completion.
 		r.console.print('All scans have completed!', style="scanresult")
-		r.console.print(f'Updated database table: {db.database_file}.DomainController')
-
 		# Sqlite - write db results to file.
 		write_results('fqdn', dc_dir, host_dct, db.get_fqdn_by_domain)
 		write_results('ip', dc_dir, host_dct, db.get_ipaddress_by_domain)
@@ -276,36 +281,34 @@ def main():
 	if not masscan_kwargs['-iL'] is None:
 		# Sqlite - database init.
 		db.create_table_masscan()
-
 		# Heading1
 		print('\n')
 		r.console.print(f'Masscan {masscan_ver} {masscan_filepath}', style='appheading')
 		r.console.rule(style='rulecolor')
-		
 		# ConfigParser - declare dict values.
 		MASSCAN_PORTSCANS = {k: v for k, v in config['masscan-portscans'].items()}
-		
 		# Masscan - instance int and run scan.
 		for key, value in MASSCAN_PORTSCANS.items():
-
-			# Masscanner - init, print and run scan.
-			ms = masscanner.Masscanner(key, value, **masscan_kwargs)
-			r.console.print(f'[grey37]{key.upper()}')
-			print(ms.cmd)
-			with r.console.status(spinner='bouncingBar', status=f'[status.text]{key.upper()}') as status:
-				count = 0
-				results = ms.run_scan()
-				
-				# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
-				for i in results:
-					db.insert_masscan(i[0], i[1], i[2], i[3])
-					r.console.print(f'{i[0]}:{i[1]}')
-					count += 1
-				r.console.print(f'Instances {count}', style='instances')
-				print('\n')
+			try:
+				# Masscanner - init, print and run scan.
+				ms = masscanner.Masscanner(key, value, **masscan_kwargs)
+				r.console.print(f'[grey37]{key.upper()}')
+				print(ms.cmd)
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]{key.upper()}') as status:
+					count = 0
+					results = ms.run_scan()
+					# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
+					for i in results:
+						db.insert_masscan(i[0], i[1], i[2], i[3])
+						r.console.print(f'{i[0]}:{i[1]}')
+						count += 1
+					r.console.print(f'Instances {count}', style='instances')
+					r.console.print(f'Updated database table: {db.database_file}.Masscan', style='instances')
+					print('\n')
+			except KeyboardInterrupt:
+				keyboard_interrupt()
+		# Print successful scan completion.
 		r.console.print('All Masscans have completed!', style="scanresult")
-		r.console.print(f'Updated database table: {db.database_file}.Masscan')
-			
 		# Sqlite - write db results to file.
 		write_results('txt', masscan_dir, \
 			MASSCAN_PORTSCANS, db.get_ipaddress_and_port_by_description)
@@ -315,17 +318,14 @@ def main():
 		print('\n')
 
 	# Metasploit - optional mode.
-	if args.msf:		
+	if args.msf:
 		# Sqlite - database init.
 		db.create_table_metasploit()
-
 		# Heading1
 		r.console.print(f'Metasploit {msf_ver} {msf_filepath}', style='appheading')
 		r.console.rule(style='rulecolor')
-
 		# ConfigParser - declare dict values.
 		MSF_VULNSCANS = {k: v for k, v in config['msf-vulnscans'].items()}
-		
 		for k, v in MSF_VULNSCANS.items():
 			# Skip 'msfmodule scan' if port does not exists in database.
 			targetlst = db.get_ipaddress_by_port(v)
@@ -340,43 +340,43 @@ def main():
 				create_targetfile(v, targetfilepath)
 				# Metasploit- instance init.
 				metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
-
-				# Metasploit - print cmd and launch scan.
-				r.console.print(f'[grey37]{os.path.basename(k.upper())}')
-				print(metasploit.cmd)
-				with r.console.status(spinner='bouncingBar', status=f'[status.text]{os.path.basename(k.upper())}') as status:
-					count = 0
-					results = metasploit.run_scan()
-					# Debug - print metasploit raw results
-					# print(f'{results}')
-
-					# Parse - save msf STDOUT to a file.
-					results_noansi = remove_ansi(results)
-					# Parse - replace/remove msf RPORT header.
-					results_norport = results_noansi.replace(f'RPORT => {v}', '')
-					# Parse - replace/remove msf RHOST header.
-					results_norhost = results_norport.replace(f'RHOSTS => file:{targetfilepath}', '')
-					# Parse - replace/remove the first two newlines.
-					results_cleaned = results_norhost.replace(f'\n', '', 2)
-					# Print - cleaned results to stdout.
-					r.console.print(f'[red]{results_cleaned.rstrip()}')
-
-					# Regex - ipv4 pattern
-					pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
-					# Regex - convert each '\n' in 'results_cleaned' to a list indice.
-					results_list = results_cleaned.rstrip().split('\n')
-					# Regex -  find all matches for ipv4 addresses in each results_list indice.
-					for i in results_list:
-						all_matches = re.finditer(pattern, i)
-						for match in all_matches:
-							# Sqlite - insert metasploit results (match.group():ipaddress, k:vulncheck, i:result)
-							db.insert_metasploit(match.group(), os.path.basename(k), i)
-							count += 1
-					r.console.print(f'Instances {count}', style='instances')
-					print('\n')
-
+				try:
+					# Metasploit - print cmd and launch scan.
+					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
+					print(metasploit.cmd)
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]{os.path.basename(k.upper())}') as status:
+						count = 0
+						results = metasploit.run_scan()
+						# Debug - print metasploit raw results
+						# print(f'{results}')
+						# Parse - save msf STDOUT to a file.
+						results_noansi = remove_ansi(results)
+						# Parse - replace/remove msf RPORT header.
+						results_norport = results_noansi.replace(f'RPORT => {v}', '')
+						# Parse - replace/remove msf RHOST header.
+						results_norhost = results_norport.replace(f'RHOSTS => file:{targetfilepath}', '')
+						# Parse - replace/remove the first two newlines.
+						results_cleaned = results_norhost.replace(f'\n', '', 2)
+						# Print - cleaned results to stdout.
+						r.console.print(f'[red]{results_cleaned.rstrip()}')
+						# Regex - ipv4 pattern
+						pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+						# Regex - convert each '\n' in 'results_cleaned' to a list indice.
+						results_list = results_cleaned.rstrip().split('\n')
+						# Regex -  find all matches for ipv4 addresses in each results_list indice.
+						for i in results_list:
+							all_matches = re.finditer(pattern, i)
+							for match in all_matches:
+								# Sqlite - insert metasploit results (match.group():ipaddress, k:vulncheck, i:result)
+								db.insert_metasploit(match.group(), os.path.basename(k), i)
+								count += 1
+						r.console.print(f'Instances {count}', style='instances')
+						r.console.print(f'Updated database table: {db.database_file}.Metasploit', style='instances')
+						print('\n')
+				except KeyboardInterrupt:
+					keyboard_interrupt()
+		# Print successful scan completion.
 		r.console.print('All Metasploit scans have completed!', style='scanresult')
-		r.console.print(f'Updated database table: {db.database_file}.Metasploit')
 		# Sqlite - write database results to file.
 		write_results('txt', metasploit_dir, \
 			MSF_VULNSCANS, db.get_result_by_msf_vulncheck)
@@ -390,14 +390,11 @@ def main():
 	if args.nmap:
 		# Sqlite - databse init.
 		db.create_table_nmap()
-
 		# Heading1
 		r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
 		r.console.rule(style='rulecolor')
-
 		# ConfigParser - declare dict values.
 		NMAP_VULNSCANS = {k: v for k, v in config['nmap-vulnscans'].items()}
-		
 		for k, v in NMAP_VULNSCANS.items():
 			# XmlParse - define xml outputfileapth.
 			xmlfile = os.path.join(xml_dir, f'{k}.xml')
@@ -414,49 +411,49 @@ def main():
 				create_targetfile(v, targetfilepath)
 				# Nmapper - instance init and run scan.
 				nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
-
-				# Nmapper - print cmd and launch scan.
-				r.console.print(f'[grey37]{k.upper()}')
-				print(nm.cmd)
-				with r.console.status(spinner='bouncingBar', status=f'[status.text]{k.upper()}') as status:
-					count = 0
-					nm.run_scan()
-				
-					# XmlParse - instance init.
-					xmlparse = xmlparser.NseParser()
-
-					# XmlParse - read xmlfile and return results to database.
-					try:
-						xmlresults = xmlparse.run(xmlfile)
-					except Exception as e:
-						pass
-						logging.debug(f'ERROR: {e}')
-						logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
-					else:
-						for i in xmlresults:
-							# Omit None type and false positive results for SMB-Signing.
-							if args.smbparse:
-								if i[1] != None \
-								and i[1] != 'Message signing enabled and required' \
-								and i[1] != 'required' \
-								and i[1] != 'supported':
+				try:
+					# Nmapper - print cmd and launch scan.
+					r.console.print(f'[grey37]{k.upper()}')
+					print(nm.cmd)
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]{k.upper()}') as status:
+						count = 0
+						nm.run_scan()
+						# XmlParse - instance init.
+						xmlparse = xmlparser.NseParser()
+						# XmlParse - read xmlfile and return results to database.
+						try:
+							xmlresults = xmlparse.run(xmlfile)
+						except Exception as e:
+							pass
+							logging.debug(f'ERROR: {e}')
+							logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
+						else:
+							for i in xmlresults:
+								# Omit None type and false positive results for SMB-Signing.
+								if args.smbparse:
+									if i[1] != None \
+									and i[1] != 'Message signing enabled and required' \
+									and i[1] != 'required' \
+									and i[1] != 'supported':
+										# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
+										db.insert_nmap(i[0], i[2], i[1])
+										# Print nse-scan results to stdout.
+										r.console.print(f'{i[0]} [red]{i[1].upper()}')
+										count += 1
+								# Omit None type results from xmlresults.
+								elif i[1] != None:
 									# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
 									db.insert_nmap(i[0], i[2], i[1])
 									# Print nse-scan results to stdout.
 									r.console.print(f'{i[0]} [red]{i[1].upper()}')
 									count += 1
-							# Omit None type results from xmlresults.
-							elif i[1] != None:
-								# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
-								db.insert_nmap(i[0], i[2], i[1])
-								# Print nse-scan results to stdout.
-								r.console.print(f'{i[0]} [red]{i[1].upper()}')
-								count += 1
-					r.console.print(f'Instances {count}', style='instances')
-					print('\n')
-
+						r.console.print(f'Instances {count}', style='instances')
+						r.console.print(f'Updated database table: {db.database_file}.Nmap', style='instances')
+						print('\n')
+				except KeyboardInterrupt:
+					keyboard_interrupt()
+		# Print successful scan completion.
 		r.console.print('All Nmap scans have completed!', style='scanresult')
-		r.console.print(f'Updated database table: {db.database_file}.Nmap')
 		# Sqlite - write database results to file.
 		write_results('txt', nmap_dir, \
 			NMAP_VULNSCANS, db.get_ipaddress_and_result_by_nse_vulncheck)
