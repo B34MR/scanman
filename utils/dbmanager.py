@@ -46,14 +46,14 @@ def menu_option_droptables():
 
 
 def menu_status_good():
-	r.console.print('\n:beers: Ready to scanman :beers:')
 	r.console.print(f'Database: [repr.path]{db.database_file}')
 	r.console.print('No existing entries were found in the database.')
+	r.console.print('\n:beers: Ready to scanman :beers:')
 
 
 def menu_status_bad():
-	r.console.print(f'\n[orange_red1]:large_orange_diamond: WARNING :large_orange_diamond:')
 	r.console.print(f'Database: [repr.path]{db.database_file}')
+	r.console.print(f'\n[orange_red1]:large_orange_diamond: WARNING :large_orange_diamond:')
 	r.console.print(f'[grey37]Existing entries were found in the database.')
 	r.console.print(f'[grey37]Continuing with the scan will merge the new and existing data.')
 	r.console.print(f'[grey37]Select the (M)enu option to drop specific db tables.')
@@ -98,7 +98,7 @@ def menu():
 		# Database dirty.
 		else:
 			menu_status_bad()
-			option = input(f'(M)enu / (Q)uit / [ENTER] to scan: ')
+			option = input(f'(Q)uit / (M)enu / [ENTER] to scan: ')
 			# r.console.print('\n')
 			if option.upper() == 'Q':
 				menu_option_quit()
