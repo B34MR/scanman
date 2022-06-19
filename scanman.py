@@ -251,6 +251,7 @@ def main():
 					host_dct[domain][str(hostname)] = ipaddress
 
 		# Read results from 'host_dct', populate database.
+		count = 0
 		for domain in host_dct.keys():
 			r.console.print(f'[grey37]{domain.upper()}')
 			for k, v in host_dct[domain].items():
@@ -258,15 +259,12 @@ def main():
 				db.insert_domaincontroller(domain, k, hostname, v, vulncheck='', result='')
 				# Print results.
 				r.console.print(f'{k} {v}')
-			r.console.print(f'Updated database table: {db.database_file}.DomainController\n', style='instances')
-		
-		# DEV - counter breaks with multiple domains.
-		# Instance counter.
-		count = 0
-		for domain in host_dct.keys():
-			for key in sorted(host_dct[domain].keys()):
 				count +=1
-		r.console.print(f'Instances {count}\n', style='instances')
+			# Print number of instances via counter.
+			r.console.print(f'Instances {count}', style='instances')
+			# Counter, reset for nested dct items.
+			count = 0
+			r.console.print(f'Updated database table: {db.database_file}.DomainController\n', style='instances')
 		
 		# Print successful scan completion.
 		r.console.print('All scans have completed!', style="scanresult")
