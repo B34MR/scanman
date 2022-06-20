@@ -230,26 +230,27 @@ def main():
 		# Hostname dictionary
 		host_dct = {
 		}
-
 		# DNS query for domain controllers and populate 'host_dct' with results.
 		for domain in args.domain:
-			with r.console.status(spinner='bouncingBar', status=f'[status.text]{domain.upper()}') as status:
-				# initiate nested dict(s) from args.domain
-				host_dct[domain] = {}
-				# call query(srv) to find dc hostname
-				answer_srv = getdc.query(domain, service='_kerberos.', protocol='_tcp.',\
-					recordtype='SRV', nameserver=args.nameserver)			
-				for hostname in answer_srv:
-					# populate host_dct with hostname.
-					host_dct[domain][str(hostname)] = ''
-					 # call query(a) to find dc ipaddress
-					answer_a = getdc.query(hostname, service='', protocol='',\
-						recordtype='A', nameserver=args.nameserver)
-					# convert list to string
-					ipaddress = '\n'.join(answer_a)
-					# populate host_dct with ipaddress
-					host_dct[domain][str(hostname)] = ipaddress
-
+			try:
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]{domain.upper()}') as status:
+					# initiate nested dict(s) from args.domain
+					host_dct[domain] = {}
+					# call query(srv) to find dc hostname
+					answer_srv = getdc.query(domain, service='_kerberos.', protocol='_tcp.',\
+						recordtype='SRV', nameserver=args.nameserver)			
+					for hostname in answer_srv:
+						# populate host_dct with hostname.
+						host_dct[domain][str(hostname)] = ''
+						 # call query(a) to find dc ipaddress
+						answer_a = getdc.query(hostname, service='', protocol='',\
+							recordtype='A', nameserver=args.nameserver)
+						# convert list to string
+						ipaddress = '\n'.join(answer_a)
+						# populate host_dct with ipaddress
+						host_dct[domain][str(hostname)] = ipaddress
+			except KeyboardInterrupt:
+				keyboard_interrupt()
 		# Read results from 'host_dct', populate database.
 		count = 0
 		for domain in host_dct.keys():
@@ -265,7 +266,6 @@ def main():
 			# Counter, reset for nested dct items.
 			count = 0
 			r.console.print(f'Updated database table: {db.database_file}.DomainController\n', style='instances')
-		
 		# Print successful scan completion.
 		r.console.print('All scans have completed!', style="scanresult")
 		# Sqlite - write db results to file.
