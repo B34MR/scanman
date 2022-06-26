@@ -468,43 +468,40 @@ def main():
 			ew_report_dir = args.ew_report
 		else:
 			ew_report_dir = os.path.join(scanman_dir, ew_dir)
-
 		# Heading1
 		r.console.print(f'Eyewitness', style='appheading')
 		r.console.rule(style='rulecolor')
-
-		# ConfigParser - declare eyewitness filepath.
+		# ConfigParser - eyewitness filepath.
 		ew_filepath = config['eyewitness-setup']['filepath']
 		ew_wrkdir = os.path.dirname(ew_filepath)
-		# ConfigParser - declare eyewitness ports.
+		# ConfigParser - eyewitness ports.
 		ew_ports = config['eyewitness-setup']['portscans']	
-		# ConfigParser - declare eyewitness args.
+		# Eyewitness args.
 		ew_args = []
 		for k, v in config['eyewitness-args'].items():
 			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
 		# Eyewitness Args - append XML input file and output directory args.
 		ew_args.append(f'-x {ew_xml_filepath}')
 		ew_args.append(f'-d {ew_report_dir}')
-
-		# Masscanner - init, print and run scan.
-		
-		# Masscanner - add new 'oX' k, v pair.
-		masscan_kwargs['-oX'] = ew_xml_filepath
-		ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **masscan_kwargs)
-		# Masscanner - print cmd and run scan.
-		r.console.print(f'[grey37]EYEWITNESS-PORTSCAN')
-		print(f'{ms_ew.cmd}')
-		with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS-PORTSCAN') as status:
-			ms_ew.run_scan()
-		print('\n')
-
-		# Eyewitness - print cmd and launch scan.
-		ew = ewrapper.Ewrapper(ew_filepath, ew_args)
-		r.console.print(f'[grey37]EYEWITNESS.PY')
-		print(f'{ew.cmd}')
-		with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS.PY') as status:
-			results = ew.run_scan()
-			print(f'\n{results}')
+		try:
+			# Masscanner - kwargs, add new 'oX' k, v pair.
+			masscan_kwargs['-oX'] = ew_xml_filepath
+			# Masscanner - init, print and run scan.
+			ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **masscan_kwargs)
+			r.console.print(f'[grey37]EYEWITNESS-PORTSCAN')
+			print(f'{ms_ew.cmd}')
+			with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS-PORTSCAN') as status:
+				ms_ew.run_scan()
+			print('\n')
+			# Eyewitness - print cmd and launch scan.
+			ew = ewrapper.Ewrapper(ew_filepath, ew_args)
+			r.console.print(f'[grey37]EYEWITNESS.PY')
+			print(f'{ew.cmd}')
+			with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS.PY') as status:
+				results = ew.run_scan()
+				print(f'\n{results}')
+		except KeyboardInterrupt:
+			keyboard_interrupt()
 
 	# Egress-scan - optional mode.
 	if  args.egressscan:
@@ -512,63 +509,62 @@ def main():
 		print('\n')
 		r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
 		r.console.rule(style='rulecolor')
-		
 		# ConfigParser - declare dict values.
 		EGRESS_SCAN = {k: v for k, v in config['egressscan'].items()}
 		egress_ports = EGRESS_SCAN['egress_ports']
 		egress_target = EGRESS_SCAN['egress_target']
-		
-		# Egress - init, print.
+		# Egress - filepaths for XML, TXT and IP.
 		xmlfile = f'{xml_dir}/egress.xml'
 		egress_file_txt = f'{egress_dir}/egress.txt'
 		egress_file_ip = f'{egress_dir}/egress.ip'
+		# Egress - kwargs.
 		nmap_oN = '-oN'
 		egress_kwargs = {nmap_oN: egress_file_txt}
-
+		# Egress - instance init and status print.
 		nm_egress = nmapper.Egress(egress_ports, egress_target, xmlfile, **egress_kwargs)
 		egress_desc = 'Egress-Scan'
 		r.console.print(f'[grey37]{egress_desc.upper()}')
 		print(nm_egress.cmd)
-		# Egress - run.
-		with r.console.status(spinner='bouncingBar', status=f'[status.text]{egress_desc.upper()}') as status:
-			count = 0
-			nm_egress.run_scan()
-
-			# XmlParse - egressparser instance init.
-			xmlparse = xmlparser.EgressParser()
-
-			# XmlParse - read xmlfile and return results to database.
-			try:
-				xmlresults = xmlparse.run(xmlfile)
-			except Exception as e:
-				pass
-				logging.debug(f'ERROR: {e}')
-				logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
-			else:
-				for i in xmlresults:
-					# Print ports from port_lst to STDOUT.
-					for port in egress_portlst:
-						if i[1] == port:
-							if i[3] == 'open':
-								r.console.print(f'[grey37]{i[0]} [white]{i[1]} {i[2].upper()} [red]{i[3].upper()}')
-							else:
-								r.console.print(f'[grey37]{i[0]} {i[1]} {i[2].upper()} {i[3].upper()}')
-					if i[3] == 'open':
-						count +=1
-
-
-				r.console.print(f'\t[grey53]... Truncated ...')
-			r.console.print(f'Instances {count}', style='instances')
+		try:
+			# Egress - run.
+			with r.console.status(spinner='bouncingBar', status=f'[status.text]{egress_desc.upper()}') as status:
+				count = 0
+				nm_egress.run_scan()
+				# XmlParse - egressparser instance init.
+				xmlparse = xmlparser.EgressParser()
+				# XmlParse - read xmlfile and return results to database.
+				try:
+					xmlresults = xmlparse.run(xmlfile)
+				except Exception as e:
+					pass
+					logging.debug(f'ERROR: {e}')
+					logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
+				else:
+					for i in xmlresults:
+						# Print ports from port_lst to STDOUT.
+						for port in egress_portlst:
+							if i[1] == port:
+								if i[3] == 'open':
+									r.console.print(f'[grey37]{i[0]} [white]{i[1]} {i[2].upper()} [red]{i[3].upper()}')
+								else:
+									r.console.print(f'[grey37]{i[0]} {i[1]} {i[2].upper()} {i[3].upper()}')
+						if i[3] == 'open':
+							count +=1
+					# Print instances.
+					r.console.print(f'\t[grey53]... Truncated ...')
+				r.console.print(f'Instances {count}', style='instances')
+				print('\n')
+			# Print successful scan completion.
+			r.console.print('All Nmap scans have completed!', style='scanresult')
+			r.console.print(f'Results written to: {egress_file_txt}')
+			# Args - parse-ip
+			if args.parse_ip:
+				with open(egress_file_ip, 'w+') as f1:
+					[f1.write(f'{result[0]}, {result[1]}, {result[2]}\n') for result in xmlresults if result[3] == 'open']	
+					r.console.print(f'Results written to: {f1.name}')
 			print('\n')
-
-		r.console.print('All Nmap scans have completed!', style='scanresult')
-		r.console.print(f'Results written to: {egress_file_txt}')
-		# Args - parse-ip
-		if args.parse_ip:
-			with open(egress_file_ip, 'w+') as f1:
-				[f1.write(f'{result[0]}, {result[1]}, {result[2]}\n') for result in xmlresults if result[3] == 'open']	
-				r.console.print(f'Results written to: {f1.name}')
-		print('\n')
+		except KeyboardInterrupt:
+			keyboard_interrupt()
 
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
 	for file in os.listdir(masscan_dir):
