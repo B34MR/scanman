@@ -49,17 +49,9 @@ directories = [dc_dir, egress_dir, ew_dir, masscan_dir, metasploit_dir, nmap_dir
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
-# Argparse - init and parse.
-args = arguments.parser.parse_args()
-
 # ConfigParser - init and defined instance options.
 config = ConfigParser(allow_no_value=True, delimiters='=')
 config.optionxform = str
-
-# Stable versions.
-mass_stablever = '1.3.2'
-msf_stablever = '6.1.8'
-nmap_stablever = '7.91'
 
 # Application versions.
 masscan_ver = masscanner.Masscanner.get_version()
@@ -88,7 +80,7 @@ def remove_key(dictionary, key):
 
 	if dictionary[key] is None:
 		try:
-		  	value = dictionary.pop(key, None)
+			value = dictionary.pop(key, None)
 		except Exception as e:
 			raise e
 		else:
@@ -185,11 +177,9 @@ def sort_alphabetical(filepath):
 def main():
 	''' Main Func '''
 
-	# Argparse - group titles.
-	group1_title = 'Masscan Arguments'
-	group2_title = 'Scanman Arguments'
-	group3_title = 'Eyewitness Arguments'
-	group4_title = 'GetDomainController Arguments'
+	# Argparse - init and parse.
+	args = arguments.parser.parse_args()
+
 	# Argparse - return args for the specific "Argparse Group".
 	masscan_kwargs = arguments.group_kwargs('Masscan Arguments')
 	# Argparse - remove 'excludefile' k,v if value is None.
@@ -203,22 +193,12 @@ def main():
 	if args.droptables:
 		dbmanager.menu_option_droptables()
 
-	# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
-	try:
-		if args.ew_report:
-			print(f'\n')
-			r.console.print(f'[orange_red1]:large_orange_diamond: WARNING :large_orange_diamond:')
-			r.console.print(f'All Contents will be Overwritten: {args.ew_report}')
-			input(f'[CTRL-C] to quit / [ENTER] to scan: ')
-	except KeyboardInterrupt:
-		print(f'\nQuit: detected [CTRL-C] ')
-		sys.exit(0)
-
 	# Database-manager Menu.
 	dbmanager.menu()
 
-	# GetDomainController - mode.
-	if args.domain:
+
+	# MODE - DC.
+	if args.subparser == 'A':
 		# Sqlite - database init.
 		db.create_table_domaincontroller()
 		# DEV - version
@@ -275,194 +255,268 @@ def main():
 		write_results('zerologon', dc_dir, host_dct, db.get_hostname_and_ipaddress_by_domain)
 		print('\n')
 
-	# Masscan - main mode.
-	if not masscan_kwargs['-iL'] is None:
-		# Sqlite - database init.
-		db.create_table_masscan()
-		# Heading1
-		print('\n')
-		r.console.print(f'Masscan {masscan_ver} {masscan_filepath}', style='appheading')
-		r.console.rule(style='rulecolor')
-		# ConfigParser - declare dict values.
-		MASSCAN_PORTSCANS = {k: v for k, v in config['masscan-portscans'].items()}
-		# Masscan - instance int and run scan.
-		for key, value in MASSCAN_PORTSCANS.items():
-			try:
-				# Masscanner - init, print and run scan.
-				ms = masscanner.Masscanner(key, value, **masscan_kwargs)
-				r.console.print(f'[grey37]{key.upper()}')
-				print(ms.cmd)
-				with r.console.status(spinner='bouncingBar', status=f'[status.text]{key.upper()}') as status:
-					count = 0
-					results = ms.run_scan()
-					# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
-					for i in results:
-						db.insert_masscan(i[0], i[1], i[2], i[3])
-						r.console.print(f'{i[0]}:{i[1]}')
-						count += 1
-					r.console.print(f'Instances {count}', style='instances')
-					r.console.print(f'Updated database table: {db.database_file}.Masscan', style='instances')
-					print('\n')
-			except KeyboardInterrupt:
-				keyboard_interrupt()
-		# Print successful scan completion.
-		r.console.print('All Masscans have completed!', style="scanresult")
-		# Sqlite - write db results to file.
-		write_results('txt', masscan_dir, \
-			MASSCAN_PORTSCANS, db.get_ipaddress_and_port_by_description)
-		if args.parse_ip:
-			write_results('ip', masscan_dir, \
-				MASSCAN_PORTSCANS, db.get_ipaddress_by_description)
-		print('\n')
-
-	# Metasploit - optional mode.
-	if args.msf:
-		# Sqlite - database init.
-		db.create_table_metasploit()
-		# Heading1
-		r.console.print(f'Metasploit {msf_ver} {msf_filepath}', style='appheading')
-		r.console.rule(style='rulecolor')
-		# ConfigParser - declare dict values.
-		MSF_VULNSCANS = {k: v for k, v in config['msf-vulnscans'].items()}
-		for k, v in MSF_VULNSCANS.items():
-			# Skip 'msfmodule scan' if port does not exists in database.
-			targetlst = db.get_ipaddress_by_port(v)
-			if not targetlst:
-				pass
-				r.console.print(f'{os.path.basename(k.upper())}', style='scancolor')
-				r.console.print(f'No targets in db found with port: {v}', style='notarget')
-				r.console.print(f'Skipped', style='skipcolor')
-				print('\n')
-			else:
-				# Sqlite - fetch targets by metasploit port(v) and write to flatfile.
-				create_targetfile(v, targetfilepath)
-				# Metasploit- instance init.
-				metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
+	# MODE - VULN
+	if args.subparser == 'B':
+		if not masscan_kwargs['-iL'] is None:
+			# Sqlite - database init.
+			db.create_table_masscan()
+			# Heading1
+			print('\n')
+			r.console.print(f'Masscan {masscan_ver} {masscan_filepath}', style='appheading')
+			r.console.rule(style='rulecolor')
+			# ConfigParser - declare dict values.
+			MASSCAN_PORTSCANS = {k: v for k, v in config['masscan-portscans'].items()}
+			# Masscan - instance int and run scan.
+			for key, value in MASSCAN_PORTSCANS.items():
 				try:
-					# Metasploit - print cmd and launch scan.
-					r.console.print(f'[grey37]{os.path.basename(k.upper())}')
-					print(metasploit.cmd)
-					with r.console.status(spinner='bouncingBar', status=f'[status.text]{os.path.basename(k.upper())}') as status:
+					# Masscanner - init, print and run scan.
+					ms = masscanner.Masscanner(key, value, **masscan_kwargs)
+					r.console.print(f'[grey37]{key.upper()}')
+					print(ms.cmd)
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]{key.upper()}') as status:
 						count = 0
-						results = metasploit.run_scan()
-						# Debug - print metasploit raw results
-						# print(f'{results}')
-						# Parse - save msf STDOUT to a file.
-						results_noansi = remove_ansi(results)
-						# Parse - replace/remove msf RPORT header.
-						results_norport = results_noansi.replace(f'RPORT => {v}', '')
-						# Parse - replace/remove msf RHOST header.
-						results_norhost = results_norport.replace(f'RHOSTS => file:{targetfilepath}', '')
-						# Parse - replace/remove the first two newlines.
-						results_cleaned = results_norhost.replace(f'\n', '', 2)
-						# Print - cleaned results to stdout.
-						r.console.print(f'[red]{results_cleaned.rstrip()}')
-						# Regex - ipv4 pattern
-						pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
-						# Regex - convert each '\n' in 'results_cleaned' to a list indice.
-						results_list = results_cleaned.rstrip().split('\n')
-						# Regex -  find all matches for ipv4 addresses in each results_list indice.
-						for i in results_list:
-							all_matches = re.finditer(pattern, i)
-							for match in all_matches:
-								# Sqlite - insert metasploit results (match.group():ipaddress, k:vulncheck, i:result)
-								db.insert_metasploit(match.group(), os.path.basename(k), i)
-								count += 1
+						results = ms.run_scan()
+						# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
+						for i in results:
+							db.insert_masscan(i[0], i[1], i[2], i[3])
+							r.console.print(f'{i[0]}:{i[1]}')
+							count += 1
 						r.console.print(f'Instances {count}', style='instances')
-						r.console.print(f'Updated database table: {db.database_file}.Metasploit', style='instances')
+						r.console.print(f'Updated database table: {db.database_file}.Masscan', style='instances')
 						print('\n')
 				except KeyboardInterrupt:
 					keyboard_interrupt()
-		# Print successful scan completion.
-		r.console.print('All Metasploit scans have completed!', style='scanresult')
-		# Sqlite - write database results to file.
-		write_results('txt', metasploit_dir, \
-			MSF_VULNSCANS, db.get_result_by_msf_vulncheck)
-		# Args - parse-ip
-		if args.parse_ip:
-			write_results('ip', metasploit_dir, \
-				MSF_VULNSCANS, db.get_ipaddress_by_msf_vulncheck)
-		print('\n')
+			# Print successful scan completion.
+			r.console.print('All Masscans have completed!', style="scanresult")
+			# Sqlite - write db results to file.
+			write_results('txt', masscan_dir, \
+				MASSCAN_PORTSCANS, db.get_ipaddress_and_port_by_description)
+			if args.parse_ip:
+				write_results('ip', masscan_dir, \
+					MASSCAN_PORTSCANS, db.get_ipaddress_by_description)
+			print('\n')
 
-	# Nmap - optional mode.
-	if args.nmap:
-		# Sqlite - databse init.
-		db.create_table_nmap()
-		# Heading1
-		r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
-		r.console.rule(style='rulecolor')
-		# ConfigParser - declare dict values.
-		NMAP_VULNSCANS = {k: v for k, v in config['nmap-vulnscans'].items()}
-		for k, v in NMAP_VULNSCANS.items():
-			# XmlParse - define xml outputfileapth.
-			xmlfile = os.path.join(xml_dir, f'{k}.xml')
-			# Skip 'nmap-script scan' if port does not exists in database.
-			targetlst = db.get_ipaddress_by_port(v)
-			if not targetlst:
-				pass
-				r.console.print(f'{k.upper()}', style='scancolor')
-				r.console.print(f'No targets in db found with port: {v}', style='notarget')
-				r.console.print(f'Skipped', style='skipcolor')
-				print('\n')
-			else:
-				# Sqlite - fetch targets by nmap port(v) and write to flatfile.
-				create_targetfile(v, targetfilepath)
-				# Nmapper - instance init and run scan.
-				nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
-				try:
-					# Nmapper - print cmd and launch scan.
-					r.console.print(f'[grey37]{k.upper()}')
-					print(nm.cmd)
-					with r.console.status(spinner='bouncingBar', status=f'[status.text]{k.upper()}') as status:
-						count = 0
-						nm.run_scan()
-						# XmlParse - instance init.
-						xmlparse = xmlparser.NseParser()
-						# XmlParse - read xmlfile and return results to database.
-						try:
-							xmlresults = xmlparse.run(xmlfile)
-						except Exception as e:
-							pass
-							logging.debug(f'ERROR: {e}')
-							logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
-						else:
-							for i in xmlresults:
-								# Omit None type and false positive results for SMB-Signing.
-								if args.smbparse:
-									if i[1] != None \
-									and i[1] != 'Message signing enabled and required' \
-									and i[1] != 'required' \
-									and i[1] != 'supported':
+		# Metasploit - option.
+		if args.msf:
+			# Sqlite - database init.
+			db.create_table_metasploit()
+			# Heading1
+			r.console.print(f'Metasploit {msf_ver} {msf_filepath}', style='appheading')
+			r.console.rule(style='rulecolor')
+			# ConfigParser - declare dict values.
+			MSF_VULNSCANS = {k: v for k, v in config['msf-vulnscans'].items()}
+			for k, v in MSF_VULNSCANS.items():
+				# Skip 'msfmodule scan' if port does not exists in database.
+				targetlst = db.get_ipaddress_by_port(v)
+				if not targetlst:
+					pass
+					r.console.print(f'{os.path.basename(k.upper())}', style='scancolor')
+					r.console.print(f'No targets in db found with port: {v}', style='notarget')
+					r.console.print(f'Skipped', style='skipcolor')
+					print('\n')
+				else:
+					# Sqlite - fetch targets by metasploit port(v) and write to flatfile.
+					create_targetfile(v, targetfilepath)
+					# Metasploit- instance init.
+					metasploit = metasploiter.Metasploiter(k, v, targetfilepath)
+					try:
+						# Metasploit - print cmd and launch scan.
+						r.console.print(f'[grey37]{os.path.basename(k.upper())}')
+						print(metasploit.cmd)
+						with r.console.status(spinner='bouncingBar', status=f'[status.text]{os.path.basename(k.upper())}') as status:
+							count = 0
+							results = metasploit.run_scan()
+							# Debug - print metasploit raw results
+							# print(f'{results}')
+							# Parse - save msf STDOUT to a file.
+							results_noansi = remove_ansi(results)
+							# Parse - replace/remove msf RPORT header.
+							results_norport = results_noansi.replace(f'RPORT => {v}', '')
+							# Parse - replace/remove msf RHOST header.
+							results_norhost = results_norport.replace(f'RHOSTS => file:{targetfilepath}', '')
+							# Parse - replace/remove the first two newlines.
+							results_cleaned = results_norhost.replace(f'\n', '', 2)
+							# Print - cleaned results to stdout.
+							r.console.print(f'[red]{results_cleaned.rstrip()}')
+							# Regex - ipv4 pattern
+							pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+							# Regex - convert each '\n' in 'results_cleaned' to a list indice.
+							results_list = results_cleaned.rstrip().split('\n')
+							# Regex -  find all matches for ipv4 addresses in each results_list indice.
+							for i in results_list:
+								all_matches = re.finditer(pattern, i)
+								for match in all_matches:
+									# Sqlite - insert metasploit results (match.group():ipaddress, k:vulncheck, i:result)
+									db.insert_metasploit(match.group(), os.path.basename(k), i)
+									count += 1
+							r.console.print(f'Instances {count}', style='instances')
+							r.console.print(f'Updated database table: {db.database_file}.Metasploit', style='instances')
+							print('\n')
+					except KeyboardInterrupt:
+						keyboard_interrupt()
+			# Print successful scan completion.
+			r.console.print('All Metasploit scans have completed!', style='scanresult')
+			# Sqlite - write database results to file.
+			write_results('txt', metasploit_dir, \
+				MSF_VULNSCANS, db.get_result_by_msf_vulncheck)
+			# Args - parse-ip
+			if args.parse_ip:
+				write_results('ip', metasploit_dir, \
+					MSF_VULNSCANS, db.get_ipaddress_by_msf_vulncheck)
+			print('\n')
+
+		# Nmap - option.
+		if args.nmap:
+			# Sqlite - databse init.
+			db.create_table_nmap()
+			# Heading1
+			r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
+			r.console.rule(style='rulecolor')
+			# ConfigParser - declare dict values.
+			NMAP_VULNSCANS = {k: v for k, v in config['nmap-vulnscans'].items()}
+			for k, v in NMAP_VULNSCANS.items():
+				# XmlParse - define xml outputfileapth.
+				xmlfile = os.path.join(xml_dir, f'{k}.xml')
+				# Skip 'nmap-script scan' if port does not exists in database.
+				targetlst = db.get_ipaddress_by_port(v)
+				if not targetlst:
+					pass
+					r.console.print(f'{k.upper()}', style='scancolor')
+					r.console.print(f'No targets in db found with port: {v}', style='notarget')
+					r.console.print(f'Skipped', style='skipcolor')
+					print('\n')
+				else:
+					# Sqlite - fetch targets by nmap port(v) and write to flatfile.
+					create_targetfile(v, targetfilepath)
+					# Nmapper - instance init and run scan.
+					nm = nmapper.Nmapper(k, v, targetfilepath, xmlfile)
+					try:
+						# Nmapper - print cmd and launch scan.
+						r.console.print(f'[grey37]{k.upper()}')
+						print(nm.cmd)
+						with r.console.status(spinner='bouncingBar', status=f'[status.text]{k.upper()}') as status:
+							count = 0
+							nm.run_scan()
+							# XmlParse - instance init.
+							xmlparse = xmlparser.NseParser()
+							# XmlParse - read xmlfile and return results to database.
+							try:
+								xmlresults = xmlparse.run(xmlfile)
+							except Exception as e:
+								pass
+								logging.debug(f'ERROR: {e}')
+								logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
+							else:
+								for i in xmlresults:
+									# Omit None type and false positive results for SMB-Signing.
+									if args.smbparse:
+										if i[1] != None \
+										and i[1] != 'Message signing enabled and required' \
+										and i[1] != 'required' \
+										and i[1] != 'supported':
+											# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
+											db.insert_nmap(i[0], i[2], i[1])
+											# Print nse-scan results to stdout.
+											r.console.print(f'{i[0]} [red]{i[1].upper()}')
+											count += 1
+									# Omit None type results from xmlresults.
+									elif i[1] != None:
 										# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
 										db.insert_nmap(i[0], i[2], i[1])
 										# Print nse-scan results to stdout.
 										r.console.print(f'{i[0]} [red]{i[1].upper()}')
 										count += 1
-								# Omit None type results from xmlresults.
-								elif i[1] != None:
-									# Sqlite - insert xmlfile results (i[0]:ipaddress, i[2]:vulncheck, i[1]:result). 
-									db.insert_nmap(i[0], i[2], i[1])
-									# Print nse-scan results to stdout.
-									r.console.print(f'{i[0]} [red]{i[1].upper()}')
-									count += 1
-						r.console.print(f'Instances {count}', style='instances')
-						r.console.print(f'Updated database table: {db.database_file}.Nmap', style='instances')
-						print('\n')
-				except KeyboardInterrupt:
-					keyboard_interrupt()
-		# Print successful scan completion.
-		r.console.print('All Nmap scans have completed!', style='scanresult')
-		# Sqlite - write database results to file.
-		write_results('txt', nmap_dir, \
-			NMAP_VULNSCANS, db.get_ipaddress_and_result_by_nse_vulncheck)
-		# Args - parse-ip
-		if args.parse_ip:
-			write_results('ip', nmap_dir, \
-				NMAP_VULNSCANS, db.get_ipaddress_by_nse_vulncheck)
-		print('\n')
+							r.console.print(f'Instances {count}', style='instances')
+							r.console.print(f'Updated database table: {db.database_file}.Nmap', style='instances')
+							print('\n')
+					except KeyboardInterrupt:
+						keyboard_interrupt()
+			# Print successful scan completion.
+			r.console.print('All Nmap scans have completed!', style='scanresult')
+			# Sqlite - write database results to file.
+			write_results('txt', nmap_dir, \
+				NMAP_VULNSCANS, db.get_ipaddress_and_result_by_nse_vulncheck)
+			# Args - parse-ip
+			if args.parse_ip:
+				write_results('ip', nmap_dir, \
+					NMAP_VULNSCANS, db.get_ipaddress_by_nse_vulncheck)
+			print('\n')
 
-	# EyeWitness - optional mode.
-	if args.eyewitness:
+		# Egress - option.
+		if  args.egressscan:
+			# Heading1
+			print('\n')
+			r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
+			r.console.rule(style='rulecolor')
+			# ConfigParser - declare dict values.
+			EGRESS_SCAN = {k: v for k, v in config['egressscan'].items()}
+			egress_ports = EGRESS_SCAN['egress_ports']
+			egress_target = EGRESS_SCAN['egress_target']
+			# Egress - filepaths for XML, TXT and IP.
+			xmlfile = f'{xml_dir}/egress.xml'
+			egress_file_txt = f'{egress_dir}/egress.txt'
+			egress_file_ip = f'{egress_dir}/egress.ip'
+			# Egress - kwargs.
+			nmap_oN = '-oN'
+			egress_kwargs = {nmap_oN: egress_file_txt}
+			# Egress - instance init and status print.
+			nm_egress = nmapper.Egress(egress_ports, egress_target, xmlfile, **egress_kwargs)
+			egress_desc = 'Egress-Scan'
+			r.console.print(f'[grey37]{egress_desc.upper()}')
+			print(nm_egress.cmd)
+			try:
+				# Egress - run.
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]{egress_desc.upper()}') as status:
+					count = 0
+					nm_egress.run_scan()
+					# XmlParse - egressparser instance init.
+					xmlparse = xmlparser.EgressParser()
+					# XmlParse - read xmlfile and return results to database.
+					try:
+						xmlresults = xmlparse.run(xmlfile)
+					except Exception as e:
+						pass
+						logging.debug(f'ERROR: {e}')
+						logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
+					else:
+						for i in xmlresults:
+							# Print ports from port_lst to STDOUT.
+							for port in egress_portlst:
+								if i[1] == port:
+									if i[3] == 'open':
+										r.console.print(f'[grey37]{i[0]} [white]{i[1]} {i[2].upper()} [red]{i[3].upper()}')
+									else:
+										r.console.print(f'[grey37]{i[0]} {i[1]} {i[2].upper()} {i[3].upper()}')
+							if i[3] == 'open':
+								count +=1
+						# Print instances.
+						r.console.print(f'\t[grey53]... Truncated ...')
+					r.console.print(f'Instances {count}', style='instances')
+					print('\n')
+				# Print successful scan completion.
+				r.console.print('All Nmap scans have completed!', style='scanresult')
+				r.console.print(f'Results written to: {egress_file_txt}')
+				# Args - parse-ip
+				if args.parse_ip:
+					with open(egress_file_ip, 'w+') as f1:
+						[f1.write(f'{result[0]}, {result[1]}, {result[2]}\n') for result in xmlresults if result[3] == 'open']	
+						r.console.print(f'Results written to: {f1.name}')
+				print('\n')
+			except KeyboardInterrupt:
+				keyboard_interrupt()
+
+	# MODE - WEB
+	if args.subparser == 'C':
+		# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
+		try:
+			if args.ew_report:
+				print(f'\n')
+				r.console.print(f'[orange_red1]:large_orange_diamond: WARNING :large_orange_diamond:')
+				r.console.print(f'All Contents will be Overwritten: {args.ew_report}')
+				input(f'[CTRL-C] to quit / [ENTER] to scan: ')
+		except KeyboardInterrupt:
+			print(f'\nQuit: detected [CTRL-C] ')
+			sys.exit(0)	
 		# Args - ew_report.
 		if args.ew_report:
 			ew_report_dir = args.ew_report
@@ -500,69 +554,6 @@ def main():
 			with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS.PY') as status:
 				results = ew.run_scan()
 				print(f'\n{results}')
-		except KeyboardInterrupt:
-			keyboard_interrupt()
-
-	# Egress-scan - optional mode.
-	if  args.egressscan:
-		# Heading1
-		print('\n')
-		r.console.print(f'Nmap {nmap_ver} {nmap_filepath}', style='appheading')
-		r.console.rule(style='rulecolor')
-		# ConfigParser - declare dict values.
-		EGRESS_SCAN = {k: v for k, v in config['egressscan'].items()}
-		egress_ports = EGRESS_SCAN['egress_ports']
-		egress_target = EGRESS_SCAN['egress_target']
-		# Egress - filepaths for XML, TXT and IP.
-		xmlfile = f'{xml_dir}/egress.xml'
-		egress_file_txt = f'{egress_dir}/egress.txt'
-		egress_file_ip = f'{egress_dir}/egress.ip'
-		# Egress - kwargs.
-		nmap_oN = '-oN'
-		egress_kwargs = {nmap_oN: egress_file_txt}
-		# Egress - instance init and status print.
-		nm_egress = nmapper.Egress(egress_ports, egress_target, xmlfile, **egress_kwargs)
-		egress_desc = 'Egress-Scan'
-		r.console.print(f'[grey37]{egress_desc.upper()}')
-		print(nm_egress.cmd)
-		try:
-			# Egress - run.
-			with r.console.status(spinner='bouncingBar', status=f'[status.text]{egress_desc.upper()}') as status:
-				count = 0
-				nm_egress.run_scan()
-				# XmlParse - egressparser instance init.
-				xmlparse = xmlparser.EgressParser()
-				# XmlParse - read xmlfile and return results to database.
-				try:
-					xmlresults = xmlparse.run(xmlfile)
-				except Exception as e:
-					pass
-					logging.debug(f'ERROR: {e}')
-					logging.warning(f'XMLParser failed, find vulnscan details in: {xmlfile}.')
-				else:
-					for i in xmlresults:
-						# Print ports from port_lst to STDOUT.
-						for port in egress_portlst:
-							if i[1] == port:
-								if i[3] == 'open':
-									r.console.print(f'[grey37]{i[0]} [white]{i[1]} {i[2].upper()} [red]{i[3].upper()}')
-								else:
-									r.console.print(f'[grey37]{i[0]} {i[1]} {i[2].upper()} {i[3].upper()}')
-						if i[3] == 'open':
-							count +=1
-					# Print instances.
-					r.console.print(f'\t[grey53]... Truncated ...')
-				r.console.print(f'Instances {count}', style='instances')
-				print('\n')
-			# Print successful scan completion.
-			r.console.print('All Nmap scans have completed!', style='scanresult')
-			r.console.print(f'Results written to: {egress_file_txt}')
-			# Args - parse-ip
-			if args.parse_ip:
-				with open(egress_file_ip, 'w+') as f1:
-					[f1.write(f'{result[0]}, {result[1]}, {result[2]}\n') for result in xmlresults if result[3] == 'open']	
-					r.console.print(f'Results written to: {f1.name}')
-			print('\n')
 		except KeyboardInterrupt:
 			keyboard_interrupt()
 
