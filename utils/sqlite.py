@@ -132,6 +132,25 @@ def get_ipaddress_by_description(description):
 	
 	return {f"{dic['ipaddress']}" for dic in c.fetchall()}
 
+# Masscan
+def is_record_masscan(description):
+	''' Check if the table has any existing records for a given description. '''
+
+	try:
+		c.execute("SELECT EXISTS(SELECT 1 FROM masscan WHERE description=:description LIMIT 1)", {'description': description})
+		record = c.fetchone()
+		if record[0] == 1:
+			# Debug print
+			# print(f'[*] Masscan Table: Found existing "{description}" record(s).')
+			return True
+		else:
+			# Debug print
+			# print(f'[*] Masscan Table exists, but no "{description}" records were found.')
+			return False
+	except sqlite3.OperationalError as e:
+		print(f'{e}')
+		return False
+
 
 # Metasploit
 def create_table_metasploit():

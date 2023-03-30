@@ -39,8 +39,7 @@ parser_b_usage = """
 Scanman
 --------------------------------------------------
 Vulnscan usage: 
-  python3 scanman.py vuln -m -n -iL /path/to/targetfile.txt
-  python3 scanman.py vuln -m -n -iL /path/to/targetfile.txt
+  python3 scanman.py vuln -m -n -eg -iL /path/to/targetfile.txt
   python3 scanman.py vuln -m -n -eg --ipparse --smbparse --rate 500 -iL /path/to/targetfile.txt 
   
 """

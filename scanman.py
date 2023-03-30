@@ -30,13 +30,16 @@ scanman_dir = os.path.dirname(__file__)
 # Relative directories and filepaths.
 MAIN_DIR = 'results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
+VULN_DIR = os.path.join(MAIN_DIR, 'vuln')
+# Subdirs for MAIN_DIR and TMP.
 dc_dir = os.path.join(MAIN_DIR, 'dc')
-egress_dir = os.path.join(MAIN_DIR, 'egress')
-ew_dir = os.path.join(MAIN_DIR, 'eyewitness')
-masscan_dir = os.path.join(MAIN_DIR, 'masscan')
-metasploit_dir = os.path.join(MAIN_DIR, 'metasploit')
-nmap_dir = os.path.join(MAIN_DIR, 'nmap')
+web_dir = os.path.join(MAIN_DIR, 'web')
 xml_dir = os.path.join(TMP_DIR, 'xml')
+# Sudburs for VULN DIR.
+egress_dir = os.path.join(VULN_DIR, 'egress')
+masscan_dir = os.path.join(VULN_DIR, 'masscan')
+metasploit_dir = os.path.join(VULN_DIR, 'metasploit')
+nmap_dir = os.path.join(VULN_DIR, 'nmap')
 
 # Absolute directories and filepaths.
 ew_xml_filepath = os.path.join(scanman_dir, xml_dir, 'eyewitness.xml')
@@ -45,7 +48,7 @@ ew_xml_filepath = os.path.join(scanman_dir, xml_dir, 'eyewitness.xml')
 targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 
 # Create output dirs.
-directories = [dc_dir, egress_dir, ew_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
+directories = [dc_dir, egress_dir, web_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -195,7 +198,6 @@ def main():
 
 	# Database-manager Menu.
 	dbmanager.menu()
-
 
 	# MODE - DC.
 	if args.subparser == 'A':
@@ -507,22 +509,24 @@ def main():
 
 	# MODE - WEB
 	if args.subparser == 'C':
-		# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
-		try:
-			if args.ew_report:
-				print(f'\n')
-				r.console.print(f'[orange_red1]:large_orange_diamond: WARNING :large_orange_diamond:')
-				r.console.print(f'All Contents will be Overwritten: {args.ew_report}')
-				input(f'[CTRL-C] to quit / [ENTER] to scan: ')
-		except KeyboardInterrupt:
-			print(f'\nQuit: detected [CTRL-C] ')
-			sys.exit(0)	
 		# Args - ew_report.
 		if args.ew_report:
 			ew_report_dir = args.ew_report
+			# Eyewitness - warn user the ew-report directory will overwrite all existing contents.
+			try:
+				if args.ew_report:
+					print(f'\n')
+					r.console.print(f'[orange_red1]:large_orange_diamond: WARNING :large_orange_diamond:')
+					r.console.print(f'All Contents will be Overwritten: {args.ew_report}')
+					input(f'[CTRL-C] to quit / [ENTER] to scan: ')
+					print('\n')
+			except KeyboardInterrupt:
+				print(f'\nQuit: detected [CTRL-C] ')
+				sys.exit(0)
 		else:
-			ew_report_dir = os.path.join(scanman_dir, ew_dir)
+			ew_report_dir = os.path.join(scanman_dir, web_dir)
 		# Heading1
+		print('\n')
 		r.console.print(f'Eyewitness', style='appheading')
 		r.console.rule(style='rulecolor')
 		# ConfigParser - eyewitness filepath.
@@ -534,28 +538,97 @@ def main():
 		ew_args = []
 		for k, v in config['eyewitness-args'].items():
 			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
-		# Eyewitness Args - append XML input file and output directory args.
-		ew_args.append(f'-x {ew_xml_filepath}')
-		ew_args.append(f'-d {ew_report_dir}')
-		try:
-			# Masscanner - kwargs, add new 'oX' k, v pair.
-			masscan_kwargs['-oX'] = ew_xml_filepath
-			# Masscanner - init, print and run scan.
-			ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **masscan_kwargs)
-			r.console.print(f'[grey37]EYEWITNESS-PORTSCAN')
-			print(f'{ms_ew.cmd}')
-			with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS-PORTSCAN') as status:
-				ms_ew.run_scan()
-			print('\n')
-			# Eyewitness - print cmd and launch scan.
-			ew = ewrapper.Ewrapper(ew_filepath, ew_args)
-			r.console.print(f'[grey37]EYEWITNESS.PY')
-			print(f'{ew.cmd}')
-			with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS.PY') as status:
-				results = ew.run_scan()
-				print(f'\n{results}')
-		except KeyboardInterrupt:
-			keyboard_interrupt()
+		# Sqlite - check database for existing 'description' Masscan records.
+		description = 'http'
+		is_record = db.is_record_masscan(description)
+		if is_record:
+			print(f"Found existing '{description}' db record(s) in Masscan table.")
+			# WEB - menu.
+			while True:
+				answer = input('Use existing scan data? (yes/no):  ')
+				if answer.lower() in ('yes', 'no'):
+					break
+				r.console.print('[red]Invalid option, Please try again.\n')
+			# Masscan - fetch targets from db and launch.
+			if answer.lower() == 'yes':
+				# Sqlite - write db results to file.
+				directory = web_dir
+				filepath_txt = os.path.join(directory, f'{os.path.basename(description)}.txt')
+				results = db.get_ipaddress_and_port_by_description(description)
+				if results != [] and results != set():
+					# Debug - print.
+					# print(results)
+					with open(filepath_txt, 'w+') as f1:
+						[f1.write(f'{result_txt}\n') for result_txt in results]
+					# Print successful completion.
+					r.console.print('Gathered targets for scanning!', style='scanresult')
+					r.console.print(f'Results from db written to: {f1.name}')
+					print('\n')
+					# DEV - refactor, code reused.
+					# Eyewitness - print cmd and launch scan.
+					ew_args.append(f'-f {f1.name}')
+					ew_args.append(f'-d {ew_report_dir}')
+					ew = ewrapper.Ewrapper(ew_filepath, ew_args)
+					r.console.print(f'[grey37]EYEWITNESS')
+					print(f'{ew.cmd}')
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS') as status:
+						results = ew.run_scan()
+						print(f'\n{results}')
+			# Masscan - use targets/ports from Config and launch scan with XML.
+			elif answer.lower() == 'no':
+				# Eyewitness Args - append XML input file and output directory args.
+				ew_args.append(f'-x {ew_xml_filepath}')
+				ew_args.append(f'-d {ew_report_dir}')
+				try:
+					# DEV - refactor, code reused.
+					# Masscanner - kwargs, add new 'oX' k, v pair.
+					masscan_kwargs['-oX'] = ew_xml_filepath
+					# Masscanner - init, print and run scan.
+					print('\n')
+					ms_ew = masscanner.Masscanner('webscan', ew_ports, **masscan_kwargs)
+					r.console.print(f'[grey37]MASSCAN')
+					print(f'{ms_ew.cmd}')
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]WEBSCAN') as status:
+						ms_ew.run_scan()
+					print('\n')
+					# DEV - refactor, code reused.
+					# Eyewitness - print cmd and launch scan.
+					ew = ewrapper.Ewrapper(ew_filepath, ew_args)
+					r.console.print(f'[grey37]EYEWITNESS.PY')
+					print(f'{ew.cmd}')
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS.PY') as status:
+						results = ew.run_scan()
+						print(f'\n{results}')
+				except KeyboardInterrupt:
+					keyboard_interrupt()
+		# DEV - refactor, code reused.
+		elif not is_record:
+			print(f"No existing '{description}' db record(s) found, launching new scan.")
+			# Eyewitness Args - append XML input file and output directory args.
+			ew_args.append(f'-x {ew_xml_filepath}')
+			ew_args.append(f'-d {ew_report_dir}')
+			try:
+				# DEV - refactor, code reused.
+				# Masscanner - kwargs, add new 'oX' k, v pair.
+				masscan_kwargs['-oX'] = ew_xml_filepath
+				# Masscanner - init, print and run scan.
+				ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **masscan_kwargs)
+				print('\n')
+				r.console.print(f'[grey37]MASSCAN')
+				print(f'{ms_ew.cmd}')
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]WEBSCAN') as status:
+					ms_ew.run_scan()
+				print('\n')
+				# DEV - refactor, code reused.
+				# Eyewitness - print cmd and launch scan.
+				ew = ewrapper.Ewrapper(ew_filepath, ew_args)
+				r.console.print(f'[grey37]EYEWITNESS.PY')
+				print(f'{ew.cmd}')
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS') as status:
+					results = ew.run_scan()
+					print(f'\n{results}')
+			except KeyboardInterrupt:
+				keyboard_interrupt()
 
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
 	for file in os.listdir(masscan_dir):
