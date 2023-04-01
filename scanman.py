@@ -10,8 +10,10 @@ from utils import mkdir
 from utils import nmapper
 # from utils import nullsession
 from utils import richard as r
+from utils import rpcdumpper
 from utils import sqlite as db
 from utils import xmlparser
+from utils import zerologon
 from configparser import ConfigParser
 import os
 import sys
@@ -31,24 +33,42 @@ scanman_dir = os.path.dirname(__file__)
 MAIN_DIR = 'results'
 TMP_DIR = os.path.join(MAIN_DIR, '.tmp')
 VULN_DIR = os.path.join(MAIN_DIR, 'vuln')
-# Subdirs for MAIN_DIR and TMP.
-dc_dir = os.path.join(MAIN_DIR, 'dc')
+DC_DIR = os.path.join(MAIN_DIR, 'dc')
+# Subdirs for MAIN_DIR/TMP.
 web_dir = os.path.join(MAIN_DIR, 'web')
 xml_dir = os.path.join(TMP_DIR, 'xml')
-# Sudburs for VULN DIR.
+# Subddirs for DC_DIR.
+enum_dir = os.path.join(DC_DIR, 'enum')
+mspar_msrprn_dir = os.path.join(DC_DIR, 'mspar_msrprn')
+smbsign_dir = os.path.join(DC_DIR, 'smbsign')
+zerologon_dir = os.path.join(DC_DIR, 'zerologon')
+# Subddirs for VULN_DIR.
 egress_dir = os.path.join(VULN_DIR, 'egress')
 masscan_dir = os.path.join(VULN_DIR, 'masscan')
 metasploit_dir = os.path.join(VULN_DIR, 'metasploit')
 nmap_dir = os.path.join(VULN_DIR, 'nmap')
 
-# Absolute directories and filepaths.
-ew_xml_filepath = os.path.join(scanman_dir, xml_dir, 'eyewitness.xml')
+# Webscan vars / absolute directories and filepaths.
+webscan_desc_key = 'http'
+web_target_fp = os.path.join(scanman_dir, web_dir, f'{webscan_desc_key}.txt')
 
 # Nmap / Metasploit temp target/inputlist filepath.
 targetfilepath = os.path.join(TMP_DIR, 'targets.txt')
 
 # Create output dirs.
-directories = [dc_dir, egress_dir, web_dir, masscan_dir, metasploit_dir, nmap_dir, xml_dir]
+directories = [
+	egress_dir,
+	enum_dir,
+	masscan_dir,
+	metasploit_dir,
+	mspar_msrprn_dir,
+	nmap_dir,
+	smbsign_dir,
+	web_dir,
+	xml_dir,
+	zerologon_dir
+]
+
 dirs = [mkdir.mkdir(directory) for directory in directories]
 [logging.info(f'Created directory: {d}') for d in dirs if d is not None]
 
@@ -140,6 +160,18 @@ def write_results(file_ext, directory, dictionary, dbquery):
 				r.console.print(f'Results from db written to: {f1.name}')
 
 
+def write_set_results(filename, results):
+	''' Write database results type:set to a flatfile. 
+	arg(s)filename:str, results:set '''
+
+	if results != [] and results != set():
+		# print(results)
+		with open(filename, 'w+') as f1:
+			[f1.write(f'{result}\n') for result in results]
+		# Print successful completion.
+		r.console.print(f'Results from db written to: {f1.name}')
+
+
 def sort_ipaddress(filepath):
 	''' Sort and unique IP addresses from a file.
 	arg(s)filepath:str '''
@@ -203,62 +235,216 @@ def main():
 	if args.subparser == 'A':
 		# Sqlite - database init.
 		db.create_table_domaincontroller()
-		# DEV - version
-		getdc_version = f'1.0'
-		# Heading1
-		print('\n')
-		r.console.print(f'GetDomainController {getdc_version}', style='appheading')
-		r.console.rule(style='rulecolor')
-		# Hostname dictionary
-		host_dct = {
-		}
-		# DNS query for domain controllers and populate 'host_dct' with results.
-		for domain in args.domain:
-			try:
-				with r.console.status(spinner='bouncingBar', status=f'[status.text]{domain.upper()}') as status:
-					# initiate nested dict(s) from args.domain
-					host_dct[domain] = {}
-					# call query(srv) to find dc hostname
-					answer_srv = getdc.query(domain, service='_kerberos.', protocol='_tcp.',\
-						recordtype='SRV', nameserver=args.nameserver)			
-					for hostname in answer_srv:
-						# populate host_dct with hostname.
-						host_dct[domain][str(hostname)] = ''
-						 # call query(a) to find dc ipaddress
-						answer_a = getdc.query(hostname, service='', protocol='',\
-							recordtype='A', nameserver=args.nameserver)
-						# convert list to string
-						ipaddress = '\n'.join(answer_a)
-						# populate host_dct with ipaddress
-						host_dct[domain][str(hostname)] = ipaddress
-			except KeyboardInterrupt:
-				keyboard_interrupt()
-		# Read results from 'host_dct', populate database.
-		count = 0
-		for domain in host_dct.keys():
-			r.console.print(f'[grey37]{domain.upper()}')
-			for k, v in host_dct[domain].items():
-				hostname = k.split(".")[0]
-				db.insert_domaincontroller(domain, k, hostname, v, vulncheck='', result='')
-				# Print results.
-				r.console.print(f'{k} {v}')
-				count +=1
-			# Print number of instances via counter.
-			r.console.print(f'Instances {count}', style='instances')
-			# Counter, reset for nested dct items.
+		# ConfigParser - declare dict values.
+		DC_VULNSCANS = {k: v for k, v in config['dc-vulnscans'].items()}
+		vulnscan_lst = [k[0] for k in DC_VULNSCANS.items()]
+		# Targets - vars.
+		targetlst = []
+		targets_ip = os.path.join(DC_DIR, 'temp.ip')
+		# Targets - ZEROLOGON.
+		if args.zerologonlist:
+			zerologon_target_fp = args.zerologonlist
+			with open(zerologon_target_fp, 'r') as f1:
+				lines = [line.strip() for line in f1]
+				# print(lines)
+			for line in lines:
+				hostname, ipaddress = line.split()
+				targetlst.append([hostname.rstrip('$'), ipaddress])
+			# Targets - parse IPs from zerologon inputlist and write to flat file.
+			lines =  [i[1] for i in targetlst]
+			with open(targets_ip, 'w+') as f1:
+			 	for line in lines:
+			 		f1.write(f'{line}\n')
+		# Targets - INPUTLIST.
+		if args.inputlist:
+			inputlist_target_fp = args.inputlist
+			with open(inputlist_target_fp, 'r') as f1:
+				targetlst = [line.strip() for line in f1]
+			print(targetlst)
+
+		# Getdc - option.
+		if args.domain:
+			# Heading1
+			print('\n')
+			r.console.print(f'GetDomainController', style='appheading')
+			r.console.rule(style='rulecolor')
+			# Hostname dictionary
+			host_dct = {
+			}
+			# DNS query for domain controllers and populate 'host_dct' with results.
+			for domain in args.domain:
+				try:
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]{domain.upper()}') as status:
+						# initiate nested dict(s) from args.domain
+						host_dct[domain] = {}
+						# call query(srv) to find dc hostname
+						answer_srv = getdc.query(domain, service='_kerberos.', protocol='_tcp.',\
+							recordtype='SRV', nameserver=args.nameserver)			
+						for hostname in answer_srv:
+							# populate host_dct with hostname.
+							host_dct[domain][str(hostname)] = ''
+							 # call query(a) to find dc ipaddress
+							answer_a = getdc.query(hostname, service='', protocol='',\
+								recordtype='A', nameserver=args.nameserver)
+							# convert list to string
+							ipaddress = '\n'.join(answer_a)
+							# populate host_dct with ipaddress
+							host_dct[domain][str(hostname)] = ipaddress
+				except KeyboardInterrupt:
+					keyboard_interrupt()
+			# Read results from 'host_dct', populate database.
 			count = 0
-			r.console.print(f'Updated database table: {db.database_file}.DomainController\n', style='instances')
-		# Print successful scan completion.
-		r.console.print('All scans have completed!', style="scanresult")
-		# Sqlite - write db results to file.
-		write_results('fqdn', dc_dir, host_dct, db.get_fqdn_by_domain)
-		write_results('ip', dc_dir, host_dct, db.get_ipaddress_by_domain)
-		write_results('fqdnip', dc_dir, host_dct, db.get_fqdn_and_ipaddress_by_domain)
-		write_results('zerologon', dc_dir, host_dct, db.get_hostname_and_ipaddress_by_domain)
-		print('\n')
+			for domain in host_dct.keys():
+				r.console.print(f'[grey37]{domain.upper()}')
+				for k, v in host_dct[domain].items():
+					hostname = k.split(".")[0]
+					db.insert_domaincontroller(domain.lower(), k.lower(), hostname.lower(), v, vulncheck='', result='')
+					# Print results.
+					r.console.print(f'{k} {v}')
+					count +=1
+				# Print number of instances via counter.
+				r.console.print(f'Instances {count}', style='instances')
+				# Counter, reset for nested dct items.
+				count = 0
+				r.console.print(f'Updated database table: {db.database_file}.DomainController\n', style='instances')
+			# Print successful scan completion.
+			r.console.print('All scans have completed!', style="scanresult")
+			# Sqlite - write db results to file.
+			write_results('fqdn', DC_DIR, host_dct, db.get_fqdn_by_domain)
+			write_results('ip', DC_DIR, host_dct, db.get_ipaddress_by_domain)
+			write_results('fqdnip', DC_DIR, host_dct, db.get_fqdn_and_ipaddress_by_domain)
+			write_results('zerologon', DC_DIR, host_dct, db.get_hostname_and_ipaddress_by_domain)
+			print('\n')
+
+		# Nullsession - option.
+		if 'nullsession' in vulnscan_lst:
+			print('\n')
+			r.console.print(f'Nullsession', style='appheading')
+			r.console.rule(style='rulecolor')
+		# SMB Signing - option.
+		if 'smb2-security-mode' in vulnscan_lst:
+			# Heading1
+			print('\n')
+			r.console.print(f'SMB Signing', style='appheading')
+			r.console.rule(style='rulecolor')
+			try:
+				# XmlParse - define xml outputfileapth.
+				xmlfile = os.path.join(xml_dir, f'{k}dc_smb.xml')
+				# Nmapper - obj init.
+				nm = nmapper.Nmapper('smb2-security-mode', '445', targets_ip, xmlfile)
+				# Nmapper - print cmd and launch scan.
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]{ipaddress}') as status:
+					nm.run_scan()
+					# XmlParse - instance init, read xmlfile and return results to database.
+					xmlparse = xmlparser.NseParser()
+					xmlresults = xmlparse.run(xmlfile)
+					# Omit None results and print to stdout.
+					for i in xmlresults:
+						if i[1] != None:
+							# Sqlite - insert xmlfile results (i[0]:ipaddress, i[1]:nseoutput). 
+							# db.update_smbv2_security(i[0], i[1])
+							# Print nse-scan results to stdout.
+							r.console.print(f'[grey58]{i[0]} [grey37]- {i[1].upper()}')
+						else:
+							print(i[0], i[1])
+					print('\n')
+			except KeyboardInterrupt:
+				print(f'\nQuit: detected [CTRL-C]')
+		# Print Services - option.
+		if 'printservice' in vulnscan_lst:
+			print('\n')
+			r.console.print(f'Print Services', style='appheading')
+			r.console.rule(style='rulecolor')
+
+			# VARS.
+			targetlst = []
+
+			try:
+				# Rpcdumpper - print cmd.
+				# print(f"\n{rpcdumpper.Rpcdumpper('').cmd}ipaddress")
+				# Heading 2 - scan type.
+				r.console.print(f'[grey27]MS-PAR/MS-RPRN')
+
+				# Printsrv - fetch targets from flatfile.
+				fp = 'results/dc/infrared.local.zerologon'
+				with open(fp, 'r') as f1:
+					lines = [line.strip() for line in f1]
+					# return lines
+					for line in lines:
+						hostname, ipaddress = line.split()
+						targetlst.append([hostname.rstrip('$'), ipaddress])
+
+				for target in targetlst:
+					hostname, ipaddress = target
+					# Rpcdumpper - init and launch scan.
+					rpcdump = rpcdumpper.Rpcdumpper(ipaddress)
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]{hostname.upper()} {ipaddress}') as status:
+						results = rpcdump.run_scan()
+						# Rcpdumpper - Get results:bool and update database.
+						is_mspar = rpcdump.is_substring(results, 'MS-PAR')
+						is_msrprn = rpcdump.is_substring(results, 'MS-RPRN')
+						# Sqlite - update table:zeroscan, column:print_services. 
+						# db.update_MS_PAR(ipaddress, str(is_mspar))
+						# db.update_MS_RPRN(ipaddress, str(is_msrprn))
+					r.console.print(f'[grey58]{hostname.upper()} {ipaddress}[grey37] - MS-PAR: {is_mspar}, MS-RPRN: {is_msrprn}')
+				print('\n')
+			except KeyboardInterrupt as e:
+				print(f'\nQuit: detected [CTRL-C]')
+		# Zerologon - option.
+		if 'zerologon' in vulnscan_lst:
+			# DEV - implement version check.
+			impacket_stablever = 'v0.9.23'
+			# Banner
+			print('\n')
+			r.console.print(f'Zerologon / CVE-2020-1472', style='appheading')
+			r.console.rule(style='rulecolor')
+			try:
+				# VARS.
+				MAX_ATTEMPTS = 2000
+
+				# if args.domain:
+				# 	targetlst = []
+				# 	# Sqlite - fetch targets from db.
+				# 	targetlst = list(db.get_hostname_and_ipaddress())
+
+				# Iterate over targets and unpack hostname and ip address.
+				for target in targetlst:
+					hostname, ipaddress = target
+					# DEV, relocate sqlite insert statment.
+					# Sqlite - insert target data.
+					# db.insert_data(hostname.upper(), ipaddress, None, None, None, None)
+				
+					# Zerologon - init instance and launch authentication attack.
+					zl = zerologon.ZeroLogon(ipaddress, hostname)
+					with r.console.status(spinner='bouncingBar', status=f'[status.text]{hostname.upper()} {ipaddress}') as status:
+						rpc_con_results = None
+						# Counter - for authentication attempts.
+						counter = 0
+						for attempt in range(0, MAX_ATTEMPTS):
+							rpc_con_results = zl.run()
+							counter += 1
+							if rpc_con_results != 0xc0000022:
+								break
+
+						# Print - authentication attempts.
+						r.console.print(f'[grey58]{hostname.upper()} {ipaddress} [grey37] - AUTH-ATTEMPTS: {counter}')
+						# if str(rpc_con_results) == '3221225506':
+						# 	print('NOT VULNERABLE')
+						# elif str(rpc_con_results) == 'impacket.dcerpc.v5.rpcrt.DCERPC_v5':
+						# 	print('[red]VULNERABLE')
+						
+						# Print - Zerologn Results.
+						print(hostname.upper(), ipaddress, str(rpc_con_results))
+						# Sqlite - update vulncheck results.
+						db.update_vulncheck(hostname.lower(), ipaddress, 'CVE-2020-1472', str(rpc_con_results))
+						# db.insert_domaincontroller(domain, fqdn='', hostname, ipaddress, vulncheck='Zerologon', result=str(rpc_con_results))
+					print('\n')
+			except KeyboardInterrupt:
+				print(f'\nQuit: detected [CTRL-C]')
 
 	# MODE - VULN
 	if args.subparser == 'B':
+		# DEV - left from old model, needs fixing.
 		if not masscan_kwargs['-iL'] is None:
 			# Sqlite - database init.
 			db.create_table_masscan()
@@ -525,110 +711,71 @@ def main():
 				sys.exit(0)
 		else:
 			ew_report_dir = os.path.join(scanman_dir, web_dir)
+		# Sqlite - database init.
+		db.create_table_masscan()
 		# Heading1
 		print('\n')
-		r.console.print(f'Eyewitness', style='appheading')
+		r.console.print(f'Webscan', style='appheading')
 		r.console.rule(style='rulecolor')
 		# ConfigParser - eyewitness filepath.
 		ew_filepath = config['eyewitness-setup']['filepath']
 		ew_wrkdir = os.path.dirname(ew_filepath)
 		# ConfigParser - eyewitness ports.
-		ew_ports = config['eyewitness-setup']['portscans']	
+		ew_ports = config['eyewitness-setup']['portscans']
+		# Sqlite - check database for existing 'description' key Masscan records.
+		is_record = db.is_record_masscan(webscan_desc_key)
+		# WEB - target file path for web scanner.
+		web_target_fp = os.path.join(web_dir, f'{os.path.basename(webscan_desc_key)}.txt')
 		# Eyewitness args.
 		ew_args = []
 		for k, v in config['eyewitness-args'].items():
-			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))
-		# Sqlite - check database for existing 'description' Masscan records.
-		description = 'http'
-		is_record = db.is_record_masscan(description)
-		if is_record:
-			print(f"Found existing '{description}' db record(s) in Masscan table.")
-			# WEB - menu.
-			while True:
-				answer = input('Use existing scan data? (yes/no):  ')
-				if answer.lower() in ('yes', 'no'):
-					break
-				r.console.print('[red]Invalid option, Please try again.\n')
-			# Masscan - fetch targets from db and launch.
-			if answer.lower() == 'yes':
-				# Sqlite - write db results to file.
-				directory = web_dir
-				filepath_txt = os.path.join(directory, f'{os.path.basename(description)}.txt')
-				results = db.get_ipaddress_and_port_by_description(description)
-				if results != [] and results != set():
-					# Debug - print.
-					# print(results)
-					with open(filepath_txt, 'w+') as f1:
-						[f1.write(f'{result_txt}\n') for result_txt in results]
-					# Print successful completion.
-					r.console.print('Gathered targets for scanning!', style='scanresult')
-					r.console.print(f'Results from db written to: {f1.name}')
-					print('\n')
-					# DEV - refactor, code reused.
-					# Eyewitness - print cmd and launch scan.
-					ew_args.append(f'-f {f1.name}')
-					ew_args.append(f'-d {ew_report_dir}')
-					ew = ewrapper.Ewrapper(ew_filepath, ew_args)
-					r.console.print(f'[grey37]EYEWITNESS')
-					print(f'{ew.cmd}')
-					with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS') as status:
-						results = ew.run_scan()
-						print(f'\n{results}')
-			# Masscan - use targets/ports from Config and launch scan with XML.
-			elif answer.lower() == 'no':
-				# Eyewitness Args - append XML input file and output directory args.
-				ew_args.append(f'-x {ew_xml_filepath}')
-				ew_args.append(f'-d {ew_report_dir}')
-				try:
-					# DEV - refactor, code reused.
-					# Masscanner - kwargs, add new 'oX' k, v pair.
-					masscan_kwargs['-oX'] = ew_xml_filepath
-					# Masscanner - init, print and run scan.
-					print('\n')
-					ms_ew = masscanner.Masscanner('webscan', ew_ports, **masscan_kwargs)
-					r.console.print(f'[grey37]MASSCAN')
-					print(f'{ms_ew.cmd}')
-					with r.console.status(spinner='bouncingBar', status=f'[status.text]WEBSCAN') as status:
-						ms_ew.run_scan()
-					print('\n')
-					# DEV - refactor, code reused.
-					# Eyewitness - print cmd and launch scan.
-					ew = ewrapper.Ewrapper(ew_filepath, ew_args)
-					r.console.print(f'[grey37]EYEWITNESS.PY')
-					print(f'{ew.cmd}')
-					with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS.PY') as status:
-						results = ew.run_scan()
-						print(f'\n{results}')
-				except KeyboardInterrupt:
-					keyboard_interrupt()
-		# DEV - refactor, code reused.
-		elif not is_record:
-			print(f"No existing '{description}' db record(s) found, launching new scan.")
-			# Eyewitness Args - append XML input file and output directory args.
-			ew_args.append(f'-x {ew_xml_filepath}')
-			ew_args.append(f'-d {ew_report_dir}')
+			ew_args.append(k) if v == None else ew_args.append(' '.join([k, v]))	
+		# WEB - records do not exists, launch port scans.
+		if is_record == False:
+			r.console.print(f"[grey37]No '{webscan_desc_key}' targets from the db were found, launching port scan.\n")
+			if masscan_kwargs['-iL'] is None:
+				r.console.print(f'[grey37]Missing the "-iL" Targets argument.')
+				r.console.print(':v: Peace')
+				sys.exit(1)
 			try:
-				# DEV - refactor, code reused.
-				# Masscanner - kwargs, add new 'oX' k, v pair.
-				masscan_kwargs['-oX'] = ew_xml_filepath
 				# Masscanner - init, print and run scan.
-				ms_ew = masscanner.Masscanner('Eyewitness Scans', ew_ports, **masscan_kwargs)
-				print('\n')
-				r.console.print(f'[grey37]MASSCAN')
-				print(f'{ms_ew.cmd}')
-				with r.console.status(spinner='bouncingBar', status=f'[status.text]WEBSCAN') as status:
-					ms_ew.run_scan()
-				print('\n')
-				# DEV - refactor, code reused.
-				# Eyewitness - print cmd and launch scan.
-				ew = ewrapper.Ewrapper(ew_filepath, ew_args)
-				r.console.print(f'[grey37]EYEWITNESS.PY')
-				print(f'{ew.cmd}')
-				with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS') as status:
-					results = ew.run_scan()
-					print(f'\n{results}')
+				ms = masscanner.Masscanner('http', ew_ports, **masscan_kwargs)
+				r.console.print(f'[grey37]HTTP')
+				print(ms.cmd)
+				with r.console.status(spinner='bouncingBar', status=f'[status.text]HTTP') as status:
+					count = 0
+					results = ms.run_scan()
+					# Sqlite - insert results (i[0]:ipaddress, i[1]:port, i[2]:protocol, i[3]:description).
+					for i in results:
+						db.insert_masscan(i[0], i[1], i[2], i[3])
+						r.console.print(f'{i[0]}:{i[1]}')
+						count += 1
+					r.console.print(f'Instances {count}', style='instances')
+					r.console.print(f'Updated database table: {db.database_file}.Masscan', style='instances')
 			except KeyboardInterrupt:
 				keyboard_interrupt()
+			# Sqlite - fetch targets from db.
+			results = db.get_ipaddress_and_port_by_description(webscan_desc_key)
+			# Sqlite - write result to flat file.
+			write_set_results(web_target_fp, results)
+			print('\n')
+		# WEB - records do exists, launch Eyewitness.
+		if is_record == True:
+			r.console.print(f"[grey37]Gathered '{webscan_desc_key}' targets from db for web scanning.")
+			# Sqlite - fetch targets from db and write file.
+			results = db.get_ipaddress_and_port_by_description(webscan_desc_key)
+			# Sqlite - write result to flat file.
+			write_set_results(web_target_fp, results)
+			print('\n')
+		# Eyewitness - print cmd and launch scan.
+		ew_args.append(f'-f {web_target_fp}')
+		ew_args.append(f'-d {ew_report_dir}')
+		ew = ewrapper.Ewrapper(ew_filepath, ew_args)
+		r.console.print(f'[grey37]EYEWITNESS')
+		print(f'{ew.cmd}')
+		with r.console.status(spinner='bouncingBar', status=f'[status.text]EYEWITNESS') as status:
+			results = ew.run_scan()
+			print(f'\n{results}')
 
 	# Sort / unique ip addresses from files in the 'masscan' dir.	
 	for file in os.listdir(masscan_dir):
@@ -640,11 +787,11 @@ def main():
 	for file in os.listdir(nmap_dir):
 		sort_ipaddress(os.path.join(nmap_dir, file))
 	# Sort / unique ip addresses from files in the 'dc' dir.
-	for file in os.listdir(dc_dir):
-		sort_ipaddress(os.path.join(dc_dir, file))
+	for file in os.listdir(DC_DIR):
+		sort_ipaddress(os.path.join(DC_DIR, file))
 	# Sort data alphabetically from files in the 'dc' dir.
-	for file in os.listdir(dc_dir):
-		sort_alphabetical(os.path.join(dc_dir, file))
+	for file in os.listdir(DC_DIR):
+		sort_alphabetical(os.path.join(DC_DIR, file))
 
 
 if __name__ == '__main__':
