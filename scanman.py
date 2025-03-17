@@ -358,7 +358,7 @@ def main():
 						# Print - cleaned results to stdout.
 						r.console.print(f'[red]{results_cleaned.rstrip()}')
 						# Regex - ipv4 pattern
-						pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
+						pattern = re.compile('''((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)''')
 						# Regex - convert each '\n' in 'results_cleaned' to a list indice.
 						results_list = results_cleaned.rstrip().split('\n')
 						# Regex -  find all matches for ipv4 addresses in each results_list indice.
