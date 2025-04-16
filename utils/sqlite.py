@@ -242,3 +242,35 @@ def drop_table(tablename):
 			c.execute(f"DROP TABLE {tablename}")
 	except sqlite3.OperationalError as e:
 		pass
+
+# Kerberos
+def create_table_kerberos():
+    ''' Create table Kerberos '''
+
+    try:
+        with conn:
+            c.execute("""CREATE TABLE Kerberos(
+                domain text,
+                dcip text,
+                attack_type text,
+                target text,
+                hash_data text
+                )""")
+    except sqlite3.OperationalError:
+        pass
+
+# Kerberos
+def insert_kerberos(domain, dcip, attack_type, target, hash_data):
+    ''' Insert Kerberos attack result [(domain, dcip, attack_type, target, hash_data)] '''
+    
+    with conn:
+        c.execute("INSERT INTO kerberos VALUES (:domain, :dcip, :attack_type, :target, :hash_data)",
+         {'domain': domain, 'dcip': dcip, 'attack_type': attack_type, 'target': target, 'hash_data': hash_data})
+
+# Kerberos
+def get_kerberos_results_by_domain(domain):
+    ''' Get Kerberos results by domain '''
+
+    c.execute("SELECT attack_type, target, hash_data FROM kerberos WHERE domain=:domain", {'domain': domain})
+    
+    return {f"{dic['attack_type']} - {dic['target']}" for dic in c.fetchall()}
